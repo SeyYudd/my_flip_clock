@@ -1,4 +1,4 @@
-package com.example.my_stand_clock
+package com.kakasey.mystandclock
 
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
@@ -16,15 +16,55 @@ import android.media.MediaMetadata
 import android.content.Context
 import android.content.ComponentName
 import android.os.Build
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.Icon
+import android.graphics.Canvas
 
 class MediaNotificationListener : NotificationListenerService() {
     
     private var mediaSessionManager: MediaSessionManager? = null
     private var sessionListener: MediaSessionManager.OnActiveSessionsChangedListener? = null
 
+    companion object {
+        var instance: MediaNotificationListener? = null
+        
+        // Media app package names to filter
+        private val mediaApps = listOf(
+            "com.spotify.music",
+            "com.google.android.apps.youtube.music",
+            "com.apple.android.music",
+            "com.amazon.mp3",
+            "com.soundcloud.android",
+            "deezer.android.app",
+            "com.pandora.android"
+        )
+        
+        fun isMediaApp(packageName: String): Boolean {
+            return mediaApps.any { packageName.contains(it) } ||
+                   packageName.contains("music") ||
+                   packageName.contains("player")
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
+        instance = this
         setupMediaSessionListener()
+    }
+
+    override fun onDestroy() {
+        instance = null
+        sessionListener?.let { mediaSessionManager?.removeOnActiveSessionsChangedListener(it) }
+        super.onDestroy()
+    }
+
+    fun getAllActiveNotifications(): List<StatusBarNotification> {
+        return try {
+            activeNotifications?.toList() ?: emptyList()
+        } catch (e: Exception) {
+            Log.e("NotifListener", "Error getting active notifications", e)
+            emptyList()
+        }
     }
 
     private fun setupMediaSessionListener() {
@@ -55,7 +95,7 @@ class MediaNotificationListener : NotificationListenerService() {
                 sendMediaUpdate(controller)
             }
         } catch (e: Exception) {
-            Log.e("MediaListener", "Error setting up media session listener", e)
+            Log.e("NotifListener", "Error setting up media session listener", e)
         }
     }
 
@@ -86,10 +126,10 @@ class MediaNotificationListener : NotificationListenerService() {
                     artBase64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
                 }
             } catch (e: Exception) {
-                Log.e("MediaListener", "Error getting album art", e)
+                Log.e("NotifListener", "Error getting album art", e)
             }
 
-            val intent = Intent("com.example.my_stand_clock.MEDIA_NOTIFICATION")
+            val intent = Intent("com.kakasey.mystandclock.MEDIA_NOTIFICATION")
             intent.putExtra("title", title)
             intent.putExtra("artist", artist)
             intent.putExtra("album", album)
@@ -105,9 +145,9 @@ class MediaNotificationListener : NotificationListenerService() {
                 sendBroadcast(intent)
             }
             
-            Log.d("MediaListener", "Sent update: $title - $artist, playing=$isPlaying, pos=$position/$duration")
+            Log.d("NotifListener", "Sent media update: $title - $artist, playing=$isPlaying")
         } catch (e: Exception) {
-            Log.e("MediaListener", "Error sending media update", e)
+            Log.e("NotifListener", "Error sending media update", e)
         }
     }
 
@@ -117,18 +157,87 @@ class MediaNotificationListener : NotificationListenerService() {
             val extras = n.extras
             val category = n.category
             val hasMediaSession = extras.containsKey(Notification.EXTRA_MEDIA_SESSION)
+            val packageName = sbn.packageName ?: ""
             
-            if (category != Notification.CATEGORY_TRANSPORT && !hasMediaSession) {
+            // Handle media notifications
+            if (category == Notification.CATEGORY_TRANSPORT || hasMediaSession) {
+                val componentName = ComponentName(this, MediaNotificationListener::class.java)
+                mediaSessionManager?.getActiveSessions(componentName)?.firstOrNull()?.let { controller ->
+                    sendMediaUpdate(controller)
+                }
                 return
             }
-
-            // Trigger a session check when media notification appears
-            val componentName = ComponentName(this, MediaNotificationListener::class.java)
-            mediaSessionManager?.getActiveSessions(componentName)?.firstOrNull()?.let { controller ->
-                sendMediaUpdate(controller)
-            }
+            
+            // Skip media apps for general notifications
+            if (isMediaApp(packageName)) return
+            
+            // Forward general notification to Flutter
+            sendGeneralNotification(sbn)
+            
         } catch (e: Exception) {
-            Log.e("MediaListener", "error reading notification", e)
+            Log.e("NotifListener", "error reading notification", e)
+        }
+    }
+
+    private fun sendGeneralNotification(sbn: StatusBarNotification) {
+        try {
+            val n = sbn.notification
+            val extras = n.extras
+            val packageName = sbn.packageName ?: ""
+            
+            val appName = try {
+                packageManager.getApplicationLabel(
+                    packageManager.getApplicationInfo(packageName, 0)
+                ).toString()
+            } catch (e: Exception) { packageName }
+            
+            val title = extras?.getString(Notification.EXTRA_TITLE) ?: 
+                        extras?.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: ""
+            val text = extras?.getString(Notification.EXTRA_TEXT) ?: 
+                       extras?.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
+            val timestamp = sbn.postTime
+
+            // Get app icon as base64
+            var iconBase64: String? = null
+            try {
+                val icon = packageManager.getApplicationIcon(packageName)
+                if (icon is BitmapDrawable) {
+                    val baos = ByteArrayOutputStream()
+                    val bitmap = icon.bitmap
+                    val scaled = Bitmap.createScaledBitmap(bitmap, 48, 48, true)
+                    scaled.compress(Bitmap.CompressFormat.PNG, 100, baos)
+                    iconBase64 = Base64.encodeToString(baos.toByteArray(), Base64.NO_WRAP)
+                } else {
+                    // Convert to bitmap
+                    val bitmap = Bitmap.createBitmap(48, 48, Bitmap.Config.ARGB_8888)
+                    val canvas = Canvas(bitmap)
+                    icon.setBounds(0, 0, 48, 48)
+                    icon.draw(canvas)
+                    val baos = ByteArrayOutputStream()
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, baos)
+                    iconBase64 = Base64.encodeToString(baos.toByteArray(), Base64.NO_WRAP)
+                }
+            } catch (e: Exception) { 
+                Log.e("NotifListener", "Error getting icon", e)
+            }
+
+            val intent = Intent("com.kakasey.mystandclock.GENERAL_NOTIFICATION")
+            intent.putExtra("packageName", packageName)
+            intent.putExtra("appName", appName)
+            intent.putExtra("title", title)
+            intent.putExtra("text", text)
+            intent.putExtra("timestamp", timestamp)
+            if (iconBase64 != null) intent.putExtra("icon", iconBase64)
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                sendBroadcast(intent, null)
+            } else {
+                sendBroadcast(intent)
+            }
+            
+            Log.d("NotifListener", "Sent notification: $appName - $title")
+        } catch (e: Exception) {
+            Log.e("NotifListener", "Error sending notification", e)
         }
     }
 
@@ -139,7 +248,7 @@ class MediaNotificationListener : NotificationListenerService() {
             val hasMediaSession = n.extras.containsKey(Notification.EXTRA_MEDIA_SESSION)
             
             if (category == Notification.CATEGORY_TRANSPORT || hasMediaSession) {
-                val intent = Intent("com.example.my_stand_clock.MEDIA_NOTIFICATION")
+                val intent = Intent("com.kakasey.mystandclock.MEDIA_NOTIFICATION")
                 intent.putExtra("cleared", true)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     sendBroadcast(intent, null)
@@ -148,12 +257,7 @@ class MediaNotificationListener : NotificationListenerService() {
                 }
             }
         } catch (e: Exception) {
-            Log.e("MediaListener", "error on notification removed", e)
+            Log.e("NotifListener", "error on notification removed", e)
         }
-    }
-
-    override fun onDestroy() {
-        sessionListener?.let { mediaSessionManager?.removeOnActiveSessionsChangedListener(it) }
-        super.onDestroy()
     }
 }

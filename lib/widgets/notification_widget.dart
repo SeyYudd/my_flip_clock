@@ -35,7 +35,7 @@ class NotificationItem {
       appName: map['appName'] ?? 'Unknown',
       title: map['title'] ?? '',
       text: map['text'] ?? '',
-      timestamp: map['timestamp'] ?? 0,
+      timestamp: (map['timestamp'] is int) ? map['timestamp'] : 0,
       icon: iconBytes,
     );
   }
@@ -49,7 +49,7 @@ class NotificationWidget extends StatefulWidget {
 }
 
 class _NotificationWidgetState extends State<NotificationWidget> {
-  static const _channel = EventChannel('notification_channel');
+  static const _eventChannel = EventChannel('notification_event_channel');
   static const _methodChannel = MethodChannel('notification_control');
 
   List<NotificationItem> _notifications = [];
@@ -74,9 +74,11 @@ class _NotificationWidgetState extends State<NotificationWidget> {
       final result = await _methodChannel.invokeMethod(
         'isNotificationAccessGranted',
       );
-      setState(() {
-        _hasPermission = result == true;
-      });
+      if (mounted) {
+        setState(() {
+          _hasPermission = result == true;
+        });
+      }
     } catch (e) {
       debugPrint('Error checking notification permission: $e');
     }
@@ -93,13 +95,9 @@ class _NotificationWidgetState extends State<NotificationWidget> {
   }
 
   void _startListening() {
-    _subscription = _channel.receiveBroadcastStream().listen(
+    _subscription = _eventChannel.receiveBroadcastStream().listen(
       (event) {
         if (event is Map) {
-          // Skip media notifications (already handled by MediaWidget)
-          final pkg = event['packageName'] ?? '';
-          if (_isMediaApp(pkg)) return;
-
           final notification = NotificationItem.fromMap(event);
           if (mounted) {
             setState(() {
@@ -120,7 +118,6 @@ class _NotificationWidgetState extends State<NotificationWidget> {
           // Initial list of notifications
           final items = event
               .whereType<Map>()
-              .where((m) => !_isMediaApp(m['packageName'] ?? ''))
               .map((m) => NotificationItem.fromMap(m))
               .toList();
           if (mounted) {
@@ -134,21 +131,6 @@ class _NotificationWidgetState extends State<NotificationWidget> {
         debugPrint('Notification stream error: $e');
       },
     );
-  }
-
-  bool _isMediaApp(String packageName) {
-    const mediaApps = [
-      'com.spotify.music',
-      'com.google.android.apps.youtube.music',
-      'com.apple.android.music',
-      'com.amazon.mp3',
-      'com.soundcloud.android',
-      'deezer.android.app',
-      'com.pandora.android',
-    ];
-    return mediaApps.any((app) => packageName.contains(app)) ||
-        packageName.contains('music') ||
-        packageName.contains('player');
   }
 
   @override
@@ -365,14 +347,16 @@ class _NotificationWidgetState extends State<NotificationWidget> {
               children: [
                 Row(
                   children: [
-                    Text(
-                      notification.appName,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.white.withOpacity(0.5),
+                    Expanded(
+                      child: Text(
+                        notification.appName,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white.withOpacity(0.5),
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const Spacer(),
                     Text(
                       timeStr,
                       style: TextStyle(

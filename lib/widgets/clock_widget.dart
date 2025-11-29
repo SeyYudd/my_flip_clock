@@ -324,72 +324,120 @@ class _ClockWidgetState extends State<ClockWidget> {
   }
 
   void _showAnalogEditDialog(BuildContext context, ClockState state) {
+    // Local state for preview
+    int hourColor = state.analogHourColor;
+    int minuteColor = state.analogMinuteColor;
+    int secondColor = state.analogSecondColor;
+    int bgColor = state.analogBackgroundColor;
+
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.grey[900],
-        title: const Text(
-          'Pengaturan Analog',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildColorRow(
-                  context: context,
-                  label: 'Jam',
-                  selectedColor: state.analogHourColor,
-                  onColorSelected: (color) {
-                    context.read<ClockBloc>().add(UpdateAnalogHourColor(color));
-                  },
-                ),
-                const SizedBox(height: 16),
-                _buildColorRow(
-                  context: context,
-                  label: 'Menit',
-                  selectedColor: state.analogMinuteColor,
-                  onColorSelected: (color) {
-                    context.read<ClockBloc>().add(
-                      UpdateAnalogMinuteColor(color),
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
-                _buildColorRow(
-                  context: context,
-                  label: 'Detik',
-                  selectedColor: state.analogSecondColor,
-                  onColorSelected: (color) {
-                    context.read<ClockBloc>().add(
-                      UpdateAnalogSecondColor(color),
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
-                _buildColorRow(
-                  context: context,
-                  label: 'Background',
-                  selectedColor: state.analogBackgroundColor,
-                  onColorSelected: (color) {
-                    context.read<ClockBloc>().add(
-                      UpdateAnalogBackgroundColor(color),
-                    );
-                  },
-                ),
-              ],
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            backgroundColor: Colors.grey[900],
+            title: const Text(
+              'Pengaturan Analog',
+              style: TextStyle(color: Colors.white),
             ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Tutup'),
-          ),
-        ],
+            content: SizedBox(
+              width: double.maxFinite,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Preview clock
+                    Center(
+                      child: Container(
+                        width: 120,
+                        height: 120,
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Color(bgColor),
+                        ),
+                        child: AnalogClock(
+                          datetime: DateTime.now(),
+                          isLive: true,
+                          showDigitalClock: false,
+                          showNumbers: true,
+                          showAllNumbers: false,
+                          showTicks: true,
+                          hourHandColor: Color(hourColor),
+                          minuteHandColor: Color(minuteColor),
+                          secondHandColor: Color(secondColor),
+                          numberColor: Color(hourColor),
+                          tickColor: Color(minuteColor),
+                        ),
+                      ),
+                    ),
+                    _buildColorRow(
+                      context: context,
+                      label: 'Jam',
+                      selectedColor: hourColor,
+                      onColorSelected: (color) {
+                        setDialogState(() => hourColor = color);
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    _buildColorRow(
+                      context: context,
+                      label: 'Menit',
+                      selectedColor: minuteColor,
+                      onColorSelected: (color) {
+                        setDialogState(() => minuteColor = color);
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    _buildColorRow(
+                      context: context,
+                      label: 'Detik',
+                      selectedColor: secondColor,
+                      onColorSelected: (color) {
+                        setDialogState(() => secondColor = color);
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    _buildColorRow(
+                      context: context,
+                      label: 'Background',
+                      selectedColor: bgColor,
+                      onColorSelected: (color) {
+                        setDialogState(() => bgColor = color);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Batal'),
+              ),
+              TextButton(
+                onPressed: () {
+                  // Apply all color changes
+                  context.read<ClockBloc>().add(
+                    UpdateAnalogHourColor(hourColor),
+                  );
+                  context.read<ClockBloc>().add(
+                    UpdateAnalogMinuteColor(minuteColor),
+                  );
+                  context.read<ClockBloc>().add(
+                    UpdateAnalogSecondColor(secondColor),
+                  );
+                  context.read<ClockBloc>().add(
+                    UpdateAnalogBackgroundColor(bgColor),
+                  );
+                  Navigator.pop(ctx);
+                },
+                child: const Text('Simpan'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

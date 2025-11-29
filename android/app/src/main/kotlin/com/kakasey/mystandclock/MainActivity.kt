@@ -1,4 +1,4 @@
-package com.example.my_stand_clock
+package com.kakasey.mystandclock
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -32,6 +32,8 @@ import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
 import java.io.ByteArrayOutputStream
 import android.service.notification.StatusBarNotification
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothManager
 
 class MainActivity : FlutterActivity() {
 	private val CHANNEL = "media_notifications"
@@ -146,6 +148,22 @@ class MainActivity : FlutterActivity() {
 			}
 		}
 
+		// Connectivity channel for Bluetooth status
+		MethodChannel(messenger, "connectivity_channel").setMethodCallHandler { call, result ->
+			when (call.method) {
+				"isBluetoothEnabled" -> {
+					try {
+						val bluetoothManager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+						val bluetoothAdapter = bluetoothManager.adapter
+						result.success(bluetoothAdapter?.isEnabled == true)
+					} catch (e: Exception) {
+						result.success(false)
+					}
+				}
+				else -> result.notImplemented()
+			}
+		}
+
 		// Photo gallery channel
 		MethodChannel(messenger, "photo_gallery_channel").setMethodCallHandler { call, result ->
 			if (call.method == "getPhotos") {
@@ -157,15 +175,36 @@ class MainActivity : FlutterActivity() {
 			}
 		}
 
-		// Notification channel for general notifications
-		EventChannel(messenger, "notification_channel").setStreamHandler(object : EventChannel.StreamHandler {
+		// Notification event channel for general notifications with broadcast receiver
+		EventChannel(messenger, "notification_event_channel").setStreamHandler(object : EventChannel.StreamHandler {
+			private var notifReceiver: BroadcastReceiver? = null
+			
 			override fun onListen(arguments: Any?, eventSink: EventChannel.EventSink?) {
-				notificationEvents = eventSink
-				// Send existing notifications
-				sendExistingNotifications()
+				notifReceiver = object : BroadcastReceiver() {
+					override fun onReceive(context: Context?, intent: Intent?) {
+						if (intent?.action == "com.kakasey.mystandclock.GENERAL_NOTIFICATION") {
+							val map = HashMap<String, Any?>()
+							map["packageName"] = intent.getStringExtra("packageName") ?: ""
+							map["appName"] = intent.getStringExtra("appName") ?: ""
+							map["title"] = intent.getStringExtra("title") ?: ""
+							map["text"] = intent.getStringExtra("text") ?: ""
+							map["timestamp"] = intent.getLongExtra("timestamp", 0L)
+							intent.getStringExtra("icon")?.let { map["icon"] = it }
+							eventSink?.success(map)
+						}
+					}
+				}
+				val filter = IntentFilter("com.kakasey.mystandclock.GENERAL_NOTIFICATION")
+				if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+					registerReceiver(notifReceiver, filter, Context.RECEIVER_EXPORTED)
+				} else {
+					registerReceiver(notifReceiver, filter)
+				}
 			}
+			
 			override fun onCancel(arguments: Any?) {
-				notificationEvents = null
+				notifReceiver?.let { unregisterReceiver(it) }
+				notifReceiver = null
 			}
 		})
 

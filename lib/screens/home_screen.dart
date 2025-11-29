@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:carousel_slider/carousel_slider.dart';
 import '../widgets/clock_widget.dart';
 import '../widgets/media_widget.dart';
 import '../widgets/tools_carousel_widget.dart';
@@ -12,6 +14,8 @@ import '../widgets/countdown_widget.dart';
 import '../widgets/photo_frame_widget.dart';
 import '../widgets/ambient_widget.dart';
 import '../widgets/notification_widget.dart';
+import '../widgets/connectivity_widget.dart';
+import '../widgets/gif_widget.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -24,9 +28,9 @@ class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  // Slot widget keys
-  String slot1 = 'clock';
-  String slot2 = 'now_playing';
+  // Slot widget keys - now lists for carousel
+  List<String> topWidgets = [];
+  List<String> bottomWidgets = [];
 
   // Grid settings
   double _topRatio = 0.5;
@@ -39,22 +43,24 @@ class _HomeScreenState extends State<HomeScreen>
   bool _showTabs = true;
   Timer? _hideTabsTimer;
 
-  // Controls visibility for 2 grid
-  bool _showGridControls = false;
-  Timer? _hideControlsTimer;
+  // Bottom nav bar visibility
+  bool _showBottomNav = false;
 
   bool _isLoading = true;
 
+  // All available widgets
   final Map<String, String> widgetOptions = {
     'clock': 'Clock',
     'now_playing': 'Now Playing',
-    'tools': 'Tools (Calendar/Timer/Weather)',
+    'tools': 'Tools',
     'quote': 'Quote',
     'battery': 'Battery Status',
     'countdown': 'Countdown',
     'photo': 'Photo Frame',
     'ambient': 'Ambient Animation',
     'notification': 'Notifications',
+    'connectivity': 'Connectivity',
+    'gif': 'GIF Sticker',
   };
 
   @override
@@ -77,24 +83,19 @@ class _HomeScreenState extends State<HomeScreen>
     _startHideTabsTimer();
   }
 
-  void _startHideControlsTimer() {
-    _hideControlsTimer?.cancel();
-    _hideControlsTimer = Timer(const Duration(seconds: 3), () {
-      if (mounted) setState(() => _showGridControls = false);
-    });
-  }
-
-  void _showControlsTemporarily() {
-    setState(() => _showGridControls = true);
-    _startHideControlsTimer();
-  }
-
   Future<void> _loadSettings() async {
     final p = await SharedPreferences.getInstance();
     if (mounted) {
+      final topJson = p.getString('top_widgets');
+      final bottomJson = p.getString('bottom_widgets');
+
       setState(() {
-        slot1 = p.getString('slot_1') ?? 'clock';
-        slot2 = p.getString('slot_2') ?? 'now_playing';
+        topWidgets = topJson != null
+            ? List<String>.from(jsonDecode(topJson))
+            : [];
+        bottomWidgets = bottomJson != null
+            ? List<String>.from(jsonDecode(bottomJson))
+            : [];
         _topRatio = (p.getDouble('grid_top_ratio') ?? 0.5).clamp(0.4, 0.6);
         _innerPadding = p.getDouble('grid_inner_padding') ?? 8.0;
         _outerPadding = p.getDouble('grid_outer_padding') ?? 12.0;
@@ -108,8 +109,8 @@ class _HomeScreenState extends State<HomeScreen>
 
   Future<void> _saveSettings() async {
     final p = await SharedPreferences.getInstance();
-    await p.setString('slot_1', slot1);
-    await p.setString('slot_2', slot2);
+    await p.setString('top_widgets', jsonEncode(topWidgets));
+    await p.setString('bottom_widgets', jsonEncode(bottomWidgets));
     await p.setDouble('grid_top_ratio', _topRatio);
     await p.setDouble('grid_inner_padding', _innerPadding);
     await p.setDouble('grid_outer_padding', _outerPadding);
@@ -134,7 +135,6 @@ class _HomeScreenState extends State<HomeScreen>
   void dispose() {
     _tabController.dispose();
     _hideTabsTimer?.cancel();
-    _hideControlsTimer?.cancel();
     super.dispose();
   }
 
@@ -208,63 +208,119 @@ class _HomeScreenState extends State<HomeScreen>
     final isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
 
-    return GestureDetector(
-      onTap: _showControlsTemporarily,
-      child: Stack(
-        children: [
-          // Main content with grids
-          Padding(
-            padding: EdgeInsets.all(_outerPadding),
-            child: isLandscape ? _buildHorizontalGrid() : _buildVerticalGrid(),
-          ),
+    return Stack(
+      children: [
+        // Main content with grids
+        Padding(
+          padding: EdgeInsets.all(_outerPadding),
+          child: isLandscape ? _buildHorizontalGrid() : _buildVerticalGrid(),
+        ),
 
-          // Control buttons overlay
-          if (_showGridControls) ...[
-            // First slot add button (top-left for portrait, left side for landscape)
-            Positioned(
-              top: _outerPadding + 8,
-              left: _outerPadding + 8,
-              child: _buildControlButton(
-                icon: Icons.add,
-                onTap: () => _showWidgetSelector(isTop: true),
+        // Bottom Navigation Bar
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: GestureDetector(
+            onTap: () => setState(() => _showBottomNav = !_showBottomNav),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              height: _showBottomNav ? 100 : 40,
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.9),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(20),
+                ),
               ),
+              child: _showBottomNav
+                  ? _buildExpandedBottomNav()
+                  : _buildCollapsedBottomNav(),
             ),
-            // Second slot add button
-            Positioned(
-              top: isLandscape
-                  ? _outerPadding + 8
-                  : _outerPadding +
-                        (MediaQuery.of(context).size.height -
-                                MediaQuery.of(context).padding.top -
-                                MediaQuery.of(context).padding.bottom -
-                                (_showTabs ? 48 : 0) -
-                                _outerPadding * 2) *
-                            _topRatio +
-                        _innerPadding +
-                        8,
-              left: isLandscape
-                  ? _outerPadding +
-                        (MediaQuery.of(context).size.width -
-                                _outerPadding * 2) *
-                            _topRatio +
-                        _innerPadding +
-                        8
-                  : _outerPadding + 8,
-              child: _buildControlButton(
-                icon: Icons.add,
-                onTap: () => _showWidgetSelector(isTop: false),
-              ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCollapsedBottomNav() {
+    return Center(
+      child: Container(
+        width: 40,
+        height: 4,
+        margin: const EdgeInsets.only(top: 8),
+        decoration: BoxDecoration(
+          color: Colors.grey[600],
+          borderRadius: BorderRadius.circular(2),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExpandedBottomNav() {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildNavButton(
+                  icon: Icons.tune,
+                  label: 'Settings',
+                  onTap: _showGridSettings,
+                ),
+                _buildNavButton(
+                  icon: Icons.rotate_right,
+                  label: _autoRotate ? 'Auto ON' : 'Auto OFF',
+                  onTap: () {
+                    setState(() {
+                      _autoRotate = !_autoRotate;
+                      _applyRotationSettings();
+                    });
+                    _saveSettings();
+                  },
+                  isActive: _autoRotate,
+                ),
+              ],
             ),
-            // Settings button (bottom-left)
-            Positioned(
-              bottom: _outerPadding + 8,
-              left: _outerPadding + 8,
-              child: _buildControlButton(
-                icon: Icons.tune,
-                onTap: _showGridSettings,
-              ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNavButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    bool isActive = false,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: isActive ? Colors.blue.withOpacity(0.2) : Colors.grey[800],
+              borderRadius: BorderRadius.circular(12),
             ),
-          ],
+            child: Icon(
+              icon,
+              color: isActive ? Colors.blue : Colors.white70,
+              size: 22,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: isActive ? Colors.blue : Colors.white70,
+              fontSize: 10,
+            ),
+          ),
         ],
       ),
     );
@@ -282,7 +338,7 @@ class _HomeScreenState extends State<HomeScreen>
               borderRadius: BorderRadius.circular(_borderRadius),
             ),
             clipBehavior: Clip.antiAlias,
-            child: _widgetFor(slot1),
+            child: _buildSlotContent(topWidgets, isTop: true),
           ),
         ),
         Expanded(
@@ -294,7 +350,7 @@ class _HomeScreenState extends State<HomeScreen>
               borderRadius: BorderRadius.circular(_borderRadius),
             ),
             clipBehavior: Clip.antiAlias,
-            child: _widgetFor(slot2),
+            child: _buildSlotContent(bottomWidgets, isTop: false),
           ),
         ),
       ],
@@ -313,7 +369,7 @@ class _HomeScreenState extends State<HomeScreen>
               borderRadius: BorderRadius.circular(_borderRadius),
             ),
             clipBehavior: Clip.antiAlias,
-            child: _widgetFor(slot1),
+            child: _buildSlotContent(topWidgets, isTop: true),
           ),
         ),
         Expanded(
@@ -325,82 +381,301 @@ class _HomeScreenState extends State<HomeScreen>
               borderRadius: BorderRadius.circular(_borderRadius),
             ),
             clipBehavior: Clip.antiAlias,
-            child: _widgetFor(slot2),
+            child: _buildSlotContent(bottomWidgets, isTop: false),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildControlButton({
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: Colors.white30,
-          borderRadius: BorderRadius.circular(16),
+  Widget _buildSlotContent(List<String> widgets, {required bool isTop}) {
+    if (widgets.isEmpty) {
+      return _buildEmptySlot(isTop: isTop);
+    }
+
+    if (widgets.length == 1) {
+      return Stack(
+        children: [
+          _widgetFor(widgets.first),
+          Positioned(top: 8, left: 8, child: _buildAddButton(isTop: isTop)),
+        ],
+      );
+    }
+
+    return Stack(
+      children: [
+        CarouselSlider.builder(
+          itemCount: widgets.length,
+          itemBuilder: (context, index, realIndex) {
+            return _widgetFor(widgets[index]);
+          },
+          options: CarouselOptions(
+            height: double.infinity,
+            viewportFraction: 1.0,
+            enableInfiniteScroll: widgets.length > 1,
+            autoPlay: false,
+          ),
         ),
-        child: Icon(icon, size: 20, color: Colors.black),
+        Positioned(top: 8, left: 8, child: _buildAddButton(isTop: isTop)),
+        // Page indicator
+        Positioned(
+          bottom: 8,
+          left: 0,
+          right: 0,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: widgets.asMap().entries.map((entry) {
+              return Container(
+                width: 6,
+                height: 6,
+                margin: const EdgeInsets.symmetric(horizontal: 2),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(0.5),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmptySlot({required bool isTop}) {
+    return GestureDetector(
+      onTap: () => _showWidgetSelector(isTop: isTop),
+      child: Container(
+        width: double.infinity,
+        color: Colors.grey.shade900,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade800,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.add, color: Colors.white70, size: 32),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Pilih Widget',
+              style: TextStyle(color: Colors.white70, fontSize: 14),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              isTop ? 'Slot Atas' : 'Slot Bawah',
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAddButton({required bool isTop}) {
+    return GestureDetector(
+      onTap: () => _showWidgetSelector(isTop: isTop),
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Icon(Icons.edit, color: Colors.white70, size: 18),
       ),
     );
   }
 
   void _showWidgetSelector({required bool isTop}) {
-    showDialog(
+    final currentWidgets = isTop ? topWidgets : bottomWidgets;
+    final selectedWidgets = List<String>.from(currentWidgets);
+
+    showModalBottomSheet(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.grey[900],
-        title: Text(
-          isTop ? 'Pilih Widget Atas' : 'Pilih Widget Bawah',
-          style: const TextStyle(color: Colors.white),
-        ),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: widgetOptions.length,
-            itemBuilder: (context, index) {
-              final entry = widgetOptions.entries.elementAt(index);
-              final isSelected = isTop
-                  ? slot1 == entry.key
-                  : slot2 == entry.key;
-              return ListTile(
-                leading: Icon(
-                  _getWidgetIcon(entry.key),
-                  color: isSelected ? Colors.blue : Colors.white70,
-                ),
-                title: Text(
-                  entry.value,
-                  style: TextStyle(
-                    color: isSelected ? Colors.blue : Colors.white,
-                    fontWeight: isSelected
-                        ? FontWeight.bold
-                        : FontWeight.normal,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return Container(
+            height: MediaQuery.of(context).size.height * 0.7,
+            decoration: BoxDecoration(
+              color: Colors.grey[900],
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
+              ),
+            ),
+            child: Column(
+              children: [
+                // Handle bar
+                Container(
+                  margin: const EdgeInsets.only(top: 12),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[600],
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                trailing: isSelected
-                    ? const Icon(Icons.check_circle, color: Colors.blue)
-                    : null,
-                onTap: () {
-                  setState(() {
-                    if (isTop) {
-                      slot1 = entry.key;
-                    } else {
-                      slot2 = entry.key;
-                    }
-                  });
-                  _saveSettings();
-                  Navigator.pop(ctx);
-                },
-              );
-            },
-          ),
-        ),
+                const SizedBox(height: 16),
+                Text(
+                  isTop ? 'Pilih Widget Atas' : 'Pilih Widget Bawah',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Pilih beberapa untuk carousel',
+                  style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                ),
+                const SizedBox(height: 16),
+                // Widget list
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: widgetOptions.length,
+                    itemBuilder: (context, index) {
+                      final entry = widgetOptions.entries.elementAt(index);
+                      final isSelected = selectedWidgets.contains(entry.key);
+                      final orderIndex = selectedWidgets.indexOf(entry.key);
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? Colors.blue.withOpacity(0.15)
+                              : Colors.grey.shade800,
+                          borderRadius: BorderRadius.circular(12),
+                          border: isSelected
+                              ? Border.all(color: Colors.blue, width: 1.5)
+                              : null,
+                        ),
+                        child: ListTile(
+                          leading: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? Colors.blue.withOpacity(0.3)
+                                  : Colors.grey.shade700,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              _getWidgetIcon(entry.key),
+                              color: isSelected ? Colors.blue : Colors.white70,
+                              size: 20,
+                            ),
+                          ),
+                          title: Text(
+                            entry.value,
+                            style: TextStyle(
+                              color: isSelected ? Colors.blue : Colors.white,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                            ),
+                          ),
+                          trailing: isSelected
+                              ? Container(
+                                  width: 24,
+                                  height: 24,
+                                  decoration: const BoxDecoration(
+                                    color: Colors.blue,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      '${orderIndex + 1}',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                )
+                              : null,
+                          onTap: () {
+                            setModalState(() {
+                              if (isSelected) {
+                                selectedWidgets.remove(entry.key);
+                              } else {
+                                selectedWidgets.add(entry.key);
+                              }
+                            });
+                          },
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                // Action buttons
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            side: BorderSide(color: Colors.grey.shade600),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: () {
+                            setModalState(() => selectedWidgets.clear());
+                          },
+                          child: const Text(
+                            'Hapus Semua',
+                            style: TextStyle(color: Colors.white70),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 2,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              if (isTop) {
+                                topWidgets = selectedWidgets;
+                              } else {
+                                bottomWidgets = selectedWidgets;
+                              }
+                            });
+                            _saveSettings();
+                            Navigator.pop(ctx);
+                          },
+                          child: Text(
+                            'Simpan (${selectedWidgets.length})',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -425,6 +700,10 @@ class _HomeScreenState extends State<HomeScreen>
         return Icons.animation;
       case 'notification':
         return Icons.notifications;
+      case 'connectivity':
+        return Icons.wifi;
+      case 'gif':
+        return Icons.gif_box;
       default:
         return Icons.widgets;
     }
@@ -475,7 +754,6 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
               ),
               const SizedBox(height: 20),
-
               _buildSliderRow(
                 label: 'Area Atas/Bawah',
                 value: tempTopRatio,
@@ -489,7 +767,6 @@ class _HomeScreenState extends State<HomeScreen>
                 },
               ),
               const SizedBox(height: 16),
-
               _buildSliderRow(
                 label: 'Padding Dalam',
                 value: tempInnerPadding,
@@ -502,7 +779,6 @@ class _HomeScreenState extends State<HomeScreen>
                 },
               ),
               const SizedBox(height: 16),
-
               _buildSliderRow(
                 label: 'Padding Luar',
                 value: tempOuterPadding,
@@ -515,7 +791,6 @@ class _HomeScreenState extends State<HomeScreen>
                 },
               ),
               const SizedBox(height: 16),
-
               _buildSliderRow(
                 label: 'Border Radius',
                 value: tempBorderRadius,
@@ -528,7 +803,6 @@ class _HomeScreenState extends State<HomeScreen>
                 },
               ),
               const SizedBox(height: 24),
-
               // Auto-rotate toggle
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -560,7 +834,6 @@ class _HomeScreenState extends State<HomeScreen>
                 ],
               ),
               const SizedBox(height: 24),
-
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -660,6 +933,10 @@ class _HomeScreenState extends State<HomeScreen>
         return const AmbientWidget();
       case 'notification':
         return const NotificationWidget();
+      case 'connectivity':
+        return const ConnectivityWidget();
+      case 'gif':
+        return const GifWidget();
       default:
         return const SizedBox.shrink();
     }

@@ -21,6 +21,8 @@ dependencies:
   animated_analog_clock: ^0.2.2
   permission_handler: ^10.4.0
   carousel_slider: ^5.1.1
+  connectivity_plus: ^6.1.4
+  cached_network_image: ^3.4.1
 
 dev_dependencies:
   flutter_test:

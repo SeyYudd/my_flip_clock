@@ -17,7 +17,7 @@ class ToolsCarouselWidget extends StatefulWidget {
 }
 
 class _ToolsCarouselWidgetState extends State<ToolsCarouselWidget> {
-  int _currentIndex = 0;
+  int currentIndex = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +28,7 @@ class _ToolsCarouselWidgetState extends State<ToolsCarouselWidget> {
         viewportFraction: 1.0,
         enableInfiniteScroll: true,
         onPageChanged: (index, reason) {
-          setState(() => _currentIndex = index);
+          setState(() => currentIndex = index);
         },
       ),
       items: [
@@ -186,8 +186,6 @@ class _CalendarViewState extends State<_CalendarView> {
     );
   }
 }
-
-// ============ STOPWATCH VIEW ============
 class _StopwatchView extends StatelessWidget {
   String _formatTime(Duration d) {
     final hours = d.inHours.toString().padLeft(2, '0');
@@ -311,7 +309,6 @@ class _StopwatchView extends StatelessWidget {
   }
 }
 
-// ============ POMODORO VIEW ============
 class _PomodoroView extends StatelessWidget {
   String _formatTime(Duration d) {
     final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
@@ -464,7 +461,6 @@ class _PomodoroView extends StatelessWidget {
   }
 }
 
-// ============ WEATHER VIEW ============
 class _WeatherView extends StatelessWidget {
   IconData _getWeatherIcon(String description) {
     final desc = description.toLowerCase();
