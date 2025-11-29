@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:carousel_slider/carousel_slider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../blocs/settings_bloc.dart';
 import '../widgets/clock_widget.dart';
 import '../widgets/media_widget.dart';
 import '../widgets/tools_carousel_widget.dart';
@@ -47,6 +50,13 @@ class _HomeScreenState extends State<HomeScreen>
   bool _showBottomNav = false;
 
   bool _isLoading = true;
+
+  // Burn-in protection
+  Timer? _burnInTimer;
+  double _burnInOffsetX = 0;
+  double _burnInOffsetY = 0;
+  double _overlayPosition = 0; // For overlay mode
+  final Random _random = Random();
 
   // All available widgets
   final Map<String, String> widgetOptions = {
@@ -135,7 +145,44 @@ class _HomeScreenState extends State<HomeScreen>
   void dispose() {
     _tabController.dispose();
     _hideTabsTimer?.cancel();
+    _burnInTimer?.cancel();
     super.dispose();
+  }
+
+  void _startBurnInProtection(BurnInMode mode) {
+    _burnInTimer?.cancel();
+    if (mode == BurnInMode.shift) {
+      // Shift content every 10 seconds with random offset (-5 to +5 pixels)
+      _burnInTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+        if (mounted) {
+          setState(() {
+            _burnInOffsetX = (_random.nextDouble() * 10) - 5; // -5 to +5
+            _burnInOffsetY = (_random.nextDouble() * 10) - 5; // -5 to +5
+          });
+        }
+      });
+    } else if (mode == BurnInMode.overlay) {
+      // Move overlay every 10 seconds
+      _burnInTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+        if (mounted) {
+          setState(() {
+            _overlayPosition = _random.nextDouble(); // 0.0 to 1.0
+          });
+        }
+      });
+    }
+  }
+
+  void _stopBurnInProtection() {
+    _burnInTimer?.cancel();
+    _burnInTimer = null;
+    if (mounted) {
+      setState(() {
+        _burnInOffsetX = 0;
+        _burnInOffsetY = 0;
+        _overlayPosition = 0;
+      });
+    }
   }
 
   @override
@@ -144,62 +191,130 @@ class _HomeScreenState extends State<HomeScreen>
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: GestureDetector(
-          onVerticalDragStart: (_) => _showTabsTemporarily(),
-          onHorizontalDragStart: (_) => _showTabsTemporarily(),
-          child: Column(
-            children: [
-              // Animated Tab bar
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                height: _showTabs ? 48 : 0,
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 300),
-                  opacity: _showTabs ? 1.0 : 0.0,
-                  child: Material(
-                    color: Colors.black87,
-                    child: TabBar(
-                      controller: _tabController,
-                      isScrollable: true,
-                      tabAlignment: TabAlignment.start,
-                      labelPadding: const EdgeInsets.symmetric(horizontal: 16),
-                      indicatorColor: Colors.blue,
-                      labelColor: Colors.white,
-                      unselectedLabelColor: Colors.grey,
-                      onTap: (_) => _startHideTabsTimer(),
-                      tabs: const [
-                        Tab(icon: Icon(Icons.settings, size: 20)),
-                        Tab(text: '2 Grid'),
-                        Tab(text: 'Clock'),
-                        Tab(text: 'Music'),
-                        Tab(text: 'Quote'),
-                      ],
+    return BlocListener<SettingsBloc, SettingsState>(
+      listenWhen: (prev, curr) => prev.burnInMode != curr.burnInMode,
+      listener: (context, state) {
+        if (state.burnInMode != BurnInMode.off) {
+          _startBurnInProtection(state.burnInMode);
+        } else {
+          _stopBurnInProtection();
+        }
+      },
+      child: BlocBuilder<SettingsBloc, SettingsState>(
+        buildWhen: (prev, curr) => prev.burnInMode != curr.burnInMode,
+        builder: (context, settingsState) {
+          // Start timer on first build if enabled
+          if (settingsState.burnInMode != BurnInMode.off &&
+              _burnInTimer == null) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _startBurnInProtection(settingsState.burnInMode);
+            });
+          }
+
+          return Scaffold(
+            backgroundColor: Colors.black,
+            body: SafeArea(
+              child: Stack(
+                children: [
+                  // Main content with optional shift
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 500),
+                    transform: Matrix4.translationValues(
+                      settingsState.burnInMode == BurnInMode.shift
+                          ? _burnInOffsetX
+                          : 0,
+                      settingsState.burnInMode == BurnInMode.shift
+                          ? _burnInOffsetY
+                          : 0,
+                      0,
+                    ),
+                    child: GestureDetector(
+                      onVerticalDragStart: (_) => _showTabsTemporarily(),
+                      onHorizontalDragStart: (_) => _showTabsTemporarily(),
+                      child: Column(
+                        children: [
+                          // Animated Tab bar
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            height: _showTabs ? 48 : 0,
+                            child: AnimatedOpacity(
+                              duration: const Duration(milliseconds: 300),
+                              opacity: _showTabs ? 1.0 : 0.0,
+                              child: Material(
+                                color: Colors.black87,
+                                child: TabBar(
+                                  controller: _tabController,
+                                  isScrollable: true,
+                                  tabAlignment: TabAlignment.start,
+                                  labelPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                  ),
+                                  indicatorColor: Colors.blue,
+                                  labelColor: Colors.white,
+                                  unselectedLabelColor: Colors.grey,
+                                  onTap: (_) => _startHideTabsTimer(),
+                                  tabs: const [
+                                    Tab(icon: Icon(Icons.settings, size: 20)),
+                                    Tab(text: '2 Grid'),
+                                    Tab(text: 'Clock'),
+                                    Tab(text: 'Music'),
+                                    Tab(text: 'Quote'),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          // Tab content
+                          Expanded(
+                            child: TabBarView(
+                              controller: _tabController,
+                              children: [
+                                const SingleChildScrollView(
+                                  padding: EdgeInsets.all(12.0),
+                                  child: SettingsWidget(),
+                                ),
+                                _buildTwoGridTab(),
+                                const ClockWidget(),
+                                const MediaWidget(),
+                                const QuoteWidget(),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ),
-              // Tab content
-              Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    const SingleChildScrollView(
-                      padding: EdgeInsets.all(12.0),
-                      child: SettingsWidget(),
+                  // Overlay layer for burn-in protection
+                  if (settingsState.burnInMode == BurnInMode.overlay)
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 500),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment(
+                                -1 + (_overlayPosition * 2),
+                                -1 + (_overlayPosition * 2),
+                              ),
+                              end: Alignment(
+                                1 - (_overlayPosition * 2),
+                                1 - (_overlayPosition * 2),
+                              ),
+                              colors: [
+                                Colors.transparent,
+                                Colors.black.withOpacity(0.03),
+                                Colors.transparent,
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
-                    _buildTwoGridTab(),
-                    const ClockWidget(),
-                    const MediaWidget(),
-                    const QuoteWidget(),
-                  ],
-                ),
+                ],
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }

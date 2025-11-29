@@ -11,24 +11,39 @@ const _kKeepScreenOn = 'settings_keep_screen_on';
 const _kFullscreen = 'settings_fullscreen';
 const _kLayoutMode = 'settings_layout_mode';
 const _kThemeDark = 'settings_theme_dark';
+const _kBurnInProtection = 'settings_burn_in_protection';
+const _kBurnInMode = 'settings_burn_in_mode';
 
 enum LayoutMode { single, grid2 }
+
+// Burn-in protection modes
+enum BurnInMode {
+  off, // Disabled
+  shift, // Shift screen content
+  overlay, // Moving overlay layer
+}
 
 class SettingsState extends Equatable {
   final List<DeviceOrientation> orientations;
   final bool keepScreenOn;
   final bool fullscreen;
+  final bool burnInProtection;
+  final BurnInMode burnInMode;
 
   const SettingsState({
     required this.orientations,
     required this.keepScreenOn,
     required this.fullscreen,
+    this.burnInProtection = false,
+    this.burnInMode = BurnInMode.off,
   });
 
   SettingsState copyWith({
     List<DeviceOrientation>? orientations,
     bool? keepScreenOn,
     bool? fullscreen,
+    bool? burnInProtection,
+    BurnInMode? burnInMode,
     LayoutMode? layoutMode,
     String? fontFamily,
     double? fontSize,
@@ -41,6 +56,8 @@ class SettingsState extends Equatable {
       orientations: orientations ?? this.orientations,
       keepScreenOn: keepScreenOn ?? this.keepScreenOn,
       fullscreen: fullscreen ?? this.fullscreen,
+      burnInProtection: burnInProtection ?? this.burnInProtection,
+      burnInMode: burnInMode ?? this.burnInMode,
     );
   }
 
@@ -49,6 +66,8 @@ class SettingsState extends Equatable {
     orientations,
     keepScreenOn,
     fullscreen,
+    burnInProtection,
+    burnInMode,
   ];
 }
 
@@ -107,6 +126,16 @@ class UpdateBackgroundColor extends SettingsEvent {
   UpdateBackgroundColor(this.colorValue);
 }
 
+class UpdateBurnInProtection extends SettingsEvent {
+  final bool enabled;
+  UpdateBurnInProtection(this.enabled);
+}
+
+class UpdateBurnInMode extends SettingsEvent {
+  final BurnInMode mode;
+  UpdateBurnInMode(this.mode);
+}
+
 class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
   SettingsBloc()
     : super(
@@ -114,6 +143,8 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
           orientations: [],
           keepScreenOn: false,
           fullscreen: false,
+          burnInProtection: false,
+          burnInMode: BurnInMode.off,
         ),
       ) {
     // load persisted settings
@@ -129,6 +160,8 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     on<UpdateFontColor>(_onUpdateFontColor);
     on<UpdateWidgetColor>(_onUpdateWidgetColor);
     on<UpdateThemeMode>(_onUpdateThemeMode);
+    on<UpdateBurnInProtection>(_onUpdateBurnInProtection);
+    on<UpdateBurnInMode>(_onUpdateBurnInMode);
     on<UpdateBackgroundColor>(
       (e, emit) => emit(state.copyWith(backgroundColorValue: e.colorValue)),
     );
@@ -146,6 +179,10 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     final color = prefs.getInt(_kFontColor) ?? 0xFF000000;
     final keepOn = prefs.getBool(_kKeepScreenOn) ?? false;
     final full = prefs.getBool(_kFullscreen) ?? false;
+    final burnIn = prefs.getBool(_kBurnInProtection) ?? false;
+    final burnInModeIdx = prefs.getInt(_kBurnInMode) ?? 0;
+    final burnInMode =
+        BurnInMode.values[burnInModeIdx.clamp(0, BurnInMode.values.length - 1)];
     final layoutIdx = prefs.getInt(_kLayoutMode) ?? 0;
     final layout = layoutIdx == 1 ? LayoutMode.grid2 : LayoutMode.single;
     final dark = prefs.getBool(_kThemeDark) ?? false;
@@ -170,6 +207,8 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
         fontColorValue: color,
         keepScreenOn: keepOn,
         fullscreen: full,
+        burnInProtection: burnIn,
+        burnInMode: burnInMode,
         layoutMode: layout,
         darkMode: dark,
         widgetColors: widgetColors,
@@ -266,5 +305,26 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
       ),
     );
     emit(state.copyWith(widgetColors: typed));
+  }
+
+  Future<void> _onUpdateBurnInProtection(
+    UpdateBurnInProtection e,
+    Emitter<SettingsState> emit,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kBurnInProtection, e.enabled);
+    emit(state.copyWith(burnInProtection: e.enabled));
+  }
+
+  Future<void> _onUpdateBurnInMode(
+    UpdateBurnInMode e,
+    Emitter<SettingsState> emit,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_kBurnInMode, e.mode.index);
+    // Also update burnInProtection based on mode
+    final enabled = e.mode != BurnInMode.off;
+    await prefs.setBool(_kBurnInProtection, enabled);
+    emit(state.copyWith(burnInMode: e.mode, burnInProtection: enabled));
   }
 }

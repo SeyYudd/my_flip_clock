@@ -110,6 +110,64 @@ class SettingsWidget extends StatelessWidget {
                         ),
                       ],
                     ),
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Burn-in Protection'),
+                              Text(
+                                'Cegah burn-in pada layar OLED',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        PopupMenuButton<BurnInMode>(
+                          onSelected: (mode) {
+                            context.read<SettingsBloc>().add(
+                              UpdateBurnInMode(mode),
+                            );
+                          },
+                          itemBuilder: (_) => const [
+                            PopupMenuItem(
+                              value: BurnInMode.off,
+                              child: Text('Off'),
+                            ),
+                            PopupMenuItem(
+                              value: BurnInMode.shift,
+                              child: Text('Shift (Geser Layar)'),
+                            ),
+                            PopupMenuItem(
+                              value: BurnInMode.overlay,
+                              child: Text('Overlay (Layer)'),
+                            ),
+                          ],
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                state.burnInMode == BurnInMode.off
+                                    ? 'Off'
+                                    : state.burnInMode == BurnInMode.shift
+                                    ? 'Shift'
+                                    : 'Overlay',
+                                style: TextStyle(
+                                  color: state.burnInMode == BurnInMode.off
+                                      ? Colors.grey
+                                      : Colors.blue,
+                                ),
+                              ),
+                              const Icon(Icons.arrow_drop_down),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 );
               },
