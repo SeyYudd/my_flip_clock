@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:wakelock/wakelock.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import '../blocs/settings_bloc.dart';
 
 class SettingsWidget extends StatelessWidget {
@@ -26,31 +26,6 @@ class SettingsWidget extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        const Text('Layout:'),
-                        const SizedBox(width: 8),
-                        DropdownButton<LayoutMode>(
-                          value: state.layoutMode,
-                          items: const [
-                            DropdownMenuItem(
-                              value: LayoutMode.single,
-                              child: Text('Single'),
-                            ),
-                            DropdownMenuItem(
-                              value: LayoutMode.grid2,
-                              child: Text('2 Grid'),
-                            ),
-                          ],
-                          onChanged: (v) {
-                            if (v != null)
-                              context.read<SettingsBloc>().add(
-                                UpdateLayoutMode(v),
-                              );
-                          },
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
                         const Text('Keep screen on'),
                         const Spacer(),
                         Switch(
@@ -59,10 +34,11 @@ class SettingsWidget extends StatelessWidget {
                             context.read<SettingsBloc>().add(
                               UpdateKeepScreenOn(v),
                             );
-                            if (v)
-                              await Wakelock.enable();
-                            else
-                              await Wakelock.disable();
+                            if (v) {
+                              await WakelockPlus.enable();
+                            } else {
+                              await WakelockPlus.disable();
+                            }
                           },
                         ),
                       ],
