@@ -7,8 +7,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../blocs/settings_bloc.dart';
+import '../blocs/template_bloc.dart';
+import '../core/theme/app_theme.dart';
 import '../widgets/clock_widget.dart';
 import '../widgets/media_widget.dart';
+import '../widgets/modern_tab_bar.dart';
 import '../widgets/tools_carousel_widget.dart';
 import '../widgets/quote_widget.dart';
 import '../widgets/settings_widget.dart';
@@ -19,6 +22,8 @@ import '../widgets/ambient_widget.dart';
 import '../widgets/notification_widget.dart';
 import '../widgets/connectivity_widget.dart';
 import '../widgets/gif_widget.dart';
+import '../widgets/modern_bottom_nav.dart';
+import '../widgets/modern_widget_selector.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -45,9 +50,6 @@ class _HomeScreenState extends State<HomeScreen>
   // Tab visibility
   bool _showTabs = true;
   Timer? _hideTabsTimer;
-
-  // Bottom nav bar visibility
-  bool _showBottomNav = false;
 
   bool _isLoading = true;
 
@@ -188,7 +190,36 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  gradient: AppTheme.primaryGradient,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Icon(
+                  Icons.watch_later_outlined,
+                  color: Colors.white,
+                  size: 40,
+                ),
+              ),
+              const SizedBox(height: 24),
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              const Text(
+                'Loading your clock...',
+                style: TextStyle(color: Colors.white70),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     return BlocListener<SettingsBloc, SettingsState>(
@@ -233,36 +264,11 @@ class _HomeScreenState extends State<HomeScreen>
                       onHorizontalDragStart: (_) => _showTabsTemporarily(),
                       child: Column(
                         children: [
-                          // Animated Tab bar
-                          AnimatedContainer(
-                            duration: const Duration(milliseconds: 300),
-                            height: _showTabs ? 48 : 0,
-                            child: AnimatedOpacity(
-                              duration: const Duration(milliseconds: 300),
-                              opacity: _showTabs ? 1.0 : 0.0,
-                              child: Material(
-                                color: Colors.black87,
-                                child: TabBar(
-                                  controller: _tabController,
-                                  isScrollable: true,
-                                  tabAlignment: TabAlignment.start,
-                                  labelPadding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                  ),
-                                  indicatorColor: Colors.blue,
-                                  labelColor: Colors.white,
-                                  unselectedLabelColor: Colors.grey,
-                                  onTap: (_) => _startHideTabsTimer(),
-                                  tabs: const [
-                                    Tab(icon: Icon(Icons.settings, size: 20)),
-                                    Tab(text: '2 Grid'),
-                                    Tab(text: 'Clock'),
-                                    Tab(text: 'Music'),
-                                    Tab(text: 'Quote'),
-                                  ],
-                                ),
-                              ),
-                            ),
+                          // Modern Tab bar
+                          ModernTabBar(
+                            controller: _tabController,
+                            isVisible: _showTabs,
+                            onInteraction: _startHideTabsTimer,
                           ),
                           // Tab content
                           Expanded(
@@ -323,183 +329,102 @@ class _HomeScreenState extends State<HomeScreen>
     final isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
 
-    return Stack(
-      children: [
-        // Main content with grids
-        Padding(
-          padding: EdgeInsets.all(_outerPadding),
-          child: isLandscape ? _buildHorizontalGrid() : _buildVerticalGrid(),
-        ),
+    return BlocBuilder<TemplateBloc, TemplateState>(
+      builder: (context, templateState) {
+        final template = templateState.currentTemplate;
+        final backgroundColor = template?.style.backgroundColor ?? Colors.black;
 
-        // Bottom Navigation Bar
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: 0,
-          child: GestureDetector(
-            onTap: () => setState(() => _showBottomNav = !_showBottomNav),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              height: _showBottomNav ? 100 : 40,
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.9),
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(20),
-                ),
+        return Stack(
+          children: [
+            // Background with template color
+            Container(color: backgroundColor),
+
+            // Main content with grids
+            Padding(
+              padding: EdgeInsets.all(_outerPadding),
+              child: isLandscape
+                  ? _buildHorizontalGrid()
+                  : _buildVerticalGrid(),
+            ),
+
+            // Modern Bottom Navigation Bar
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: ModernBottomNav(
+                onSettingsTap: _showGridSettings,
+                autoRotate: _autoRotate,
+                onRotateToggle: () {
+                  setState(() {
+                    _autoRotate = !_autoRotate;
+                    _applyRotationSettings();
+                  });
+                  _saveSettings();
+                },
               ),
-              child: _showBottomNav
-                  ? _buildExpandedBottomNav()
-                  : _buildCollapsedBottomNav(),
             ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCollapsedBottomNav() {
-    return Center(
-      child: Container(
-        width: 40,
-        height: 4,
-        margin: const EdgeInsets.only(top: 8),
-        decoration: BoxDecoration(
-          color: Colors.grey[600],
-          borderRadius: BorderRadius.circular(2),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildExpandedBottomNav() {
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildNavButton(
-                  icon: Icons.tune,
-                  label: 'Settings',
-                  onTap: _showGridSettings,
-                ),
-                _buildNavButton(
-                  icon: Icons.rotate_right,
-                  label: _autoRotate ? 'Auto ON' : 'Auto OFF',
-                  onTap: () {
-                    setState(() {
-                      _autoRotate = !_autoRotate;
-                      _applyRotationSettings();
-                    });
-                    _saveSettings();
-                  },
-                  isActive: _autoRotate,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-    bool isActive = false,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: isActive ? Colors.blue.withOpacity(0.2) : Colors.grey[800],
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              icon,
-              color: isActive ? Colors.blue : Colors.white70,
-              size: 22,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: isActive ? Colors.blue : Colors.white70,
-              fontSize: 10,
-            ),
-          ),
-        ],
-      ),
+          ],
+        );
+      },
     );
   }
 
   Widget _buildVerticalGrid() {
-    return Column(
-      children: [
-        Expanded(
-          flex: (_topRatio * 100).toInt(),
-          child: Container(
-            margin: EdgeInsets.only(bottom: _innerPadding / 2),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade900,
-              borderRadius: BorderRadius.circular(_borderRadius),
+    return BlocBuilder<TemplateBloc, TemplateState>(
+      builder: (context, state) {
+        return Column(
+          children: [
+            Expanded(
+              flex: (_topRatio * 100).toInt(),
+              child: Container(
+                margin: EdgeInsets.only(bottom: _innerPadding / 2),
+                decoration: AppTheme.modernCard(borderRadius: _borderRadius),
+                clipBehavior: Clip.antiAlias,
+                child: _buildSlotContent(topWidgets, isTop: true),
+              ),
             ),
-            clipBehavior: Clip.antiAlias,
-            child: _buildSlotContent(topWidgets, isTop: true),
-          ),
-        ),
-        Expanded(
-          flex: ((1 - _topRatio) * 100).toInt(),
-          child: Container(
-            margin: EdgeInsets.only(top: _innerPadding / 2),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade900,
-              borderRadius: BorderRadius.circular(_borderRadius),
+            Expanded(
+              flex: ((1 - _topRatio) * 100).toInt(),
+              child: Container(
+                margin: EdgeInsets.only(top: _innerPadding / 2),
+                decoration: AppTheme.modernCard(borderRadius: _borderRadius),
+                clipBehavior: Clip.antiAlias,
+                child: _buildSlotContent(bottomWidgets, isTop: false),
+              ),
             ),
-            clipBehavior: Clip.antiAlias,
-            child: _buildSlotContent(bottomWidgets, isTop: false),
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 
   Widget _buildHorizontalGrid() {
-    return Row(
-      children: [
-        Expanded(
-          flex: (_topRatio * 100).toInt(),
-          child: Container(
-            margin: EdgeInsets.only(right: _innerPadding / 2),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade900,
-              borderRadius: BorderRadius.circular(_borderRadius),
+    return BlocBuilder<TemplateBloc, TemplateState>(
+      builder: (context, state) {
+        return Row(
+          children: [
+            Expanded(
+              flex: (_topRatio * 100).toInt(),
+              child: Container(
+                margin: EdgeInsets.only(right: _innerPadding / 2),
+                decoration: AppTheme.modernCard(borderRadius: _borderRadius),
+                clipBehavior: Clip.antiAlias,
+                child: _buildSlotContent(topWidgets, isTop: true),
+              ),
             ),
-            clipBehavior: Clip.antiAlias,
-            child: _buildSlotContent(topWidgets, isTop: true),
-          ),
-        ),
-        Expanded(
-          flex: ((1 - _topRatio) * 100).toInt(),
-          child: Container(
-            margin: EdgeInsets.only(left: _innerPadding / 2),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade900,
-              borderRadius: BorderRadius.circular(_borderRadius),
+            Expanded(
+              flex: ((1 - _topRatio) * 100).toInt(),
+              child: Container(
+                margin: EdgeInsets.only(left: _innerPadding / 2),
+                decoration: AppTheme.modernCard(borderRadius: _borderRadius),
+                clipBehavior: Clip.antiAlias,
+                child: _buildSlotContent(bottomWidgets, isTop: false),
+              ),
             ),
-            clipBehavior: Clip.antiAlias,
-            child: _buildSlotContent(bottomWidgets, isTop: false),
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 
@@ -606,222 +531,26 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _showWidgetSelector({required bool isTop}) {
-    final currentWidgets = isTop ? topWidgets : bottomWidgets;
-    final selectedWidgets = List<String>.from(currentWidgets);
-
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setModalState) {
-          return Container(
-            height: MediaQuery.of(context).size.height * 0.7,
-            decoration: BoxDecoration(
-              color: Colors.grey[900],
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(20),
-              ),
-            ),
-            child: Column(
-              children: [
-                // Handle bar
-                Container(
-                  margin: const EdgeInsets.only(top: 12),
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[600],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  isTop ? 'Pilih Widget Atas' : 'Pilih Widget Bawah',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Pilih beberapa untuk carousel',
-                  style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
-                ),
-                const SizedBox(height: 16),
-                // Widget list
-                Expanded(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: widgetOptions.length,
-                    itemBuilder: (context, index) {
-                      final entry = widgetOptions.entries.elementAt(index);
-                      final isSelected = selectedWidgets.contains(entry.key);
-                      final orderIndex = selectedWidgets.indexOf(entry.key);
-
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? Colors.blue.withOpacity(0.15)
-                              : Colors.grey.shade800,
-                          borderRadius: BorderRadius.circular(12),
-                          border: isSelected
-                              ? Border.all(color: Colors.blue, width: 1.5)
-                              : null,
-                        ),
-                        child: ListTile(
-                          leading: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? Colors.blue.withOpacity(0.3)
-                                  : Colors.grey.shade700,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Icon(
-                              _getWidgetIcon(entry.key),
-                              color: isSelected ? Colors.blue : Colors.white70,
-                              size: 20,
-                            ),
-                          ),
-                          title: Text(
-                            entry.value,
-                            style: TextStyle(
-                              color: isSelected ? Colors.blue : Colors.white,
-                              fontWeight: isSelected
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                            ),
-                          ),
-                          trailing: isSelected
-                              ? Container(
-                                  width: 24,
-                                  height: 24,
-                                  decoration: const BoxDecoration(
-                                    color: Colors.blue,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      '${orderIndex + 1}',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                )
-                              : null,
-                          onTap: () {
-                            setModalState(() {
-                              if (isSelected) {
-                                selectedWidgets.remove(entry.key);
-                              } else {
-                                selectedWidgets.add(entry.key);
-                              }
-                            });
-                          },
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                // Action buttons
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            side: BorderSide(color: Colors.grey.shade600),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          onPressed: () {
-                            setModalState(() => selectedWidgets.clear());
-                          },
-                          child: const Text(
-                            'Hapus Semua',
-                            style: TextStyle(color: Colors.white70),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        flex: 2,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              if (isTop) {
-                                topWidgets = selectedWidgets;
-                              } else {
-                                bottomWidgets = selectedWidgets;
-                              }
-                            });
-                            _saveSettings();
-                            Navigator.pop(ctx);
-                          },
-                          child: Text(
-                            'Simpan (${selectedWidgets.length})',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          );
+      builder: (ctx) => ModernWidgetSelector(
+        currentWidgets: isTop ? topWidgets : bottomWidgets,
+        widgetOptions: widgetOptions,
+        isTop: isTop,
+        onSave: (selected) {
+          setState(() {
+            if (isTop) {
+              topWidgets = selected;
+            } else {
+              bottomWidgets = selected;
+            }
+          });
+          _saveSettings();
         },
       ),
     );
-  }
-
-  IconData _getWidgetIcon(String key) {
-    switch (key) {
-      case 'clock':
-        return Icons.access_time;
-      case 'now_playing':
-        return Icons.music_note;
-      case 'tools':
-        return Icons.build;
-      case 'quote':
-        return Icons.format_quote;
-      case 'battery':
-        return Icons.battery_full;
-      case 'countdown':
-        return Icons.timer;
-      case 'photo':
-        return Icons.photo_library;
-      case 'ambient':
-        return Icons.animation;
-      case 'notification':
-        return Icons.notifications;
-      case 'connectivity':
-        return Icons.wifi;
-      case 'gif':
-        return Icons.gif_box;
-      default:
-        return Icons.widgets;
-    }
   }
 
   void _showGridSettings() {
@@ -937,7 +666,7 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                   Switch(
                     value: _autoRotate,
-                    activeColor: Colors.blue,
+                    activeThumbColor: Colors.blue,
                     onChanged: (v) {
                       setModalState(() {});
                       setState(() {

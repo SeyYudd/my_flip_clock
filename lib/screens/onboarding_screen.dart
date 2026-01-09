@@ -62,28 +62,12 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       await _mediaControl.invokeMethod('openNotificationAccessSettings');
       await Future.delayed(const Duration(milliseconds: 800));
       await _checkAllPermissions();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Kembali dari pengaturan notifikasi')),
-        );
-      }
     } catch (_) {}
   }
 
   Future<void> _requestPostNotification() async {
     final status = await Permission.notification.request();
     setState(() => _postNotif = status.isGranted);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            status.isGranted
-                ? 'Izin notifikasi diberikan'
-                : 'Izin notifikasi ditolak',
-          ),
-        ),
-      );
-    }
   }
 
   Future<void> _requestCalendar() async {
@@ -92,17 +76,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       status = await Permission.calendar.request();
     }
     await _checkAllPermissions();
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _calendarGranted
-                ? 'Izin kalender diberikan'
-                : 'Izin kalender ditolak',
-          ),
-        ),
-      );
-    }
   }
 
   void _exitApp() {

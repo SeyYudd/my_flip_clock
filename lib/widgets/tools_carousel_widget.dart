@@ -164,19 +164,10 @@ class _CalendarViewState extends State<_CalendarView> {
                   color: Colors.white.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.event, size: 16, color: Colors.white70),
-                    const SizedBox(width: 8),
-                    Text(
-                      nextEvent['title'] ?? 'Event',
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  nextEvent['title'] ?? 'Event',
+                  style: const TextStyle(color: Colors.white70, fontSize: 12),
+                  maxLines: 2,
                 ),
               );
             },
@@ -186,6 +177,7 @@ class _CalendarViewState extends State<_CalendarView> {
     );
   }
 }
+
 class _StopwatchView extends StatelessWidget {
   String _formatTime(Duration d) {
     final hours = d.inHours.toString().padLeft(2, '0');
@@ -532,8 +524,7 @@ class _WeatherView extends StatelessWidget {
               const SizedBox(height: 24),
               // Refresh button
               GestureDetector(
-                onTap: () =>
-                    context.read<WeatherBloc>().add(LoadWeather(-6.2, 106.8)),
+                onTap: () => context.read<WeatherBloc>().add(LoadWeather()),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 20,

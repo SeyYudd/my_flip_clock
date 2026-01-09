@@ -3,41 +3,78 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-const _kFontFamily = 'settings_font_family';
-const _kFontSize = 'settings_font_size';
-const _kFontColor = 'settings_font_color';
-const _kKeepScreenOn = 'settings_keep_screen_on';
-const _kFullscreen = 'settings_fullscreen';
-const _kLayoutMode = 'settings_layout_mode';
-const _kThemeDark = 'settings_theme_dark';
-const _kBurnInProtection = 'settings_burn_in_protection';
-const _kBurnInMode = 'settings_burn_in_mode';
+import '../core/constants/storage_keys.dart';
+import '../core/utils/orientation_converter.dart';
 
 enum LayoutMode { single, grid2 }
 
-// Burn-in protection modes
 enum BurnInMode {
   off, // Disabled
   shift, // Shift screen content
   overlay, // Moving overlay layer
 }
 
+/// Complete Settings State with ALL properties
+/// No more schizophrenic state with phantom properties! 👻
 class SettingsState extends Equatable {
+  // Display settings
   final List<DeviceOrientation> orientations;
   final bool keepScreenOn;
   final bool fullscreen;
+
+  // Burn-in protection
   final bool burnInProtection;
   final BurnInMode burnInMode;
+
+  // Layout settings
+  final LayoutMode layoutMode;
+
+  // Font settings
+  final String fontFamily;
+  final double fontSize;
+  final int fontColorValue;
+
+  // Theme settings
+  final bool darkMode;
+  final int backgroundColorValue;
+
+  // Widget colors
+  final Map<String, int> widgetColors;
 
   const SettingsState({
     required this.orientations,
     required this.keepScreenOn,
     required this.fullscreen,
-    this.burnInProtection = false,
-    this.burnInMode = BurnInMode.off,
+    required this.burnInProtection,
+    required this.burnInMode,
+    required this.layoutMode,
+    required this.fontFamily,
+    required this.fontSize,
+    required this.fontColorValue,
+    required this.darkMode,
+    required this.backgroundColorValue,
+    required this.widgetColors,
   });
 
+  /// Factory constructor for default settings
+  factory SettingsState.initial() {
+    return const SettingsState(
+      orientations: [],
+      keepScreenOn: false,
+      fullscreen: false,
+      burnInProtection: false,
+      burnInMode: BurnInMode.off,
+      layoutMode: LayoutMode.single,
+      fontFamily: 'Roboto',
+      fontSize: 36.0,
+      fontColorValue: 0xFF000000,
+      darkMode: false,
+      backgroundColorValue: 0xFF000000,
+      widgetColors: {},
+    );
+  }
+
+  /// Now copyWith makes sense! All properties are real!
   SettingsState copyWith({
     List<DeviceOrientation>? orientations,
     bool? keepScreenOn,
@@ -58,9 +95,17 @@ class SettingsState extends Equatable {
       fullscreen: fullscreen ?? this.fullscreen,
       burnInProtection: burnInProtection ?? this.burnInProtection,
       burnInMode: burnInMode ?? this.burnInMode,
+      layoutMode: layoutMode ?? this.layoutMode,
+      fontFamily: fontFamily ?? this.fontFamily,
+      fontSize: fontSize ?? this.fontSize,
+      fontColorValue: fontColorValue ?? this.fontColorValue,
+      backgroundColorValue: backgroundColorValue ?? this.backgroundColorValue,
+      darkMode: darkMode ?? this.darkMode,
+      widgetColors: widgetColors ?? this.widgetColors,
     );
   }
 
+  /// Equatable now tracks ALL properties correctly! 🎯
   @override
   List<Object?> get props => [
     orientations,
@@ -68,9 +113,17 @@ class SettingsState extends Equatable {
     fullscreen,
     burnInProtection,
     burnInMode,
+    layoutMode,
+    fontFamily,
+    fontSize,
+    fontColorValue,
+    backgroundColorValue,
+    darkMode,
+    widgetColors,
   ];
 }
 
+// Events remain the same
 abstract class SettingsEvent {}
 
 class LoadSettings extends SettingsEvent {}
@@ -136,18 +189,9 @@ class UpdateBurnInMode extends SettingsEvent {
   UpdateBurnInMode(this.mode);
 }
 
+/// Fixed SettingsBloc with proper state management
 class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
-  SettingsBloc()
-    : super(
-        const SettingsState(
-          orientations: [],
-          keepScreenOn: false,
-          fullscreen: false,
-          burnInProtection: false,
-          burnInMode: BurnInMode.off,
-        ),
-      ) {
-    // load persisted settings
+  SettingsBloc() : super(SettingsState.initial()) {
     on<LoadSettings>(_onLoadSettings);
     on<UpdateOrientations>(_onUpdateOrientations);
     on<UpdateKeepScreenOn>(_onUpdateKeepScreenOn);
@@ -160,9 +204,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     on<UpdateThemeMode>(_onUpdateThemeMode);
     on<UpdateBurnInProtection>(_onUpdateBurnInProtection);
     on<UpdateBurnInMode>(_onUpdateBurnInMode);
-    on<UpdateBackgroundColor>(
-      (e, emit) => emit(state.copyWith(backgroundColorValue: e.colorValue)),
-    );
+    on<UpdateBackgroundColor>(_onUpdateBackgroundColor);
 
     add(LoadSettings());
   }
@@ -172,41 +214,30 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     Emitter<SettingsState> emit,
   ) async {
     final prefs = await SharedPreferences.getInstance();
-    final family = prefs.getString(_kFontFamily) ?? 'Roboto';
-    final size = prefs.getDouble(_kFontSize) ?? 36.0;
-    final color = prefs.getInt(_kFontColor) ?? 0xFF000000;
-    final keepOn = prefs.getBool(_kKeepScreenOn) ?? false;
-    final full = prefs.getBool(_kFullscreen) ?? false;
-    final burnIn = prefs.getBool(_kBurnInProtection) ?? false;
-    final burnInModeIdx = prefs.getInt(_kBurnInMode) ?? 0;
+
+    // Load all settings - NO PHANTOM PROPERTIES!
+    final family = prefs.getString(StorageKeys.fontFamily) ?? 'Roboto';
+    final size = prefs.getDouble(StorageKeys.fontSize) ?? 36.0;
+    final color = prefs.getInt(StorageKeys.fontColor) ?? 0xFF000000;
+    final keepOn = prefs.getBool(StorageKeys.keepScreenOn) ?? false;
+    final full = prefs.getBool(StorageKeys.fullscreen) ?? false;
+    final burnIn = prefs.getBool(StorageKeys.burnInProtection) ?? false;
+    final burnInModeIdx = prefs.getInt(StorageKeys.burnInMode) ?? 0;
     final burnInMode =
         BurnInMode.values[burnInModeIdx.clamp(0, BurnInMode.values.length - 1)];
-    final layoutIdx = prefs.getInt(_kLayoutMode) ?? 0;
+    final layoutIdx = prefs.getInt(StorageKeys.layoutMode) ?? 0;
     final layout = layoutIdx == 1 ? LayoutMode.grid2 : LayoutMode.single;
-    final dark = prefs.getBool(_kThemeDark) ?? false;
+    final dark = prefs.getBool(StorageKeys.themeDark) ?? false;
+    final bgColor = prefs.getInt('background_color') ?? 0xFF000000;
 
-    // Load orientations
-    final orientationList = prefs.getStringList('settings_orientations');
-    List<DeviceOrientation> orientations = [];
-    if (orientationList != null) {
-      orientations = orientationList.map((e) {
-        switch (e) {
-          case 'landscapeLeft':
-            return DeviceOrientation.landscapeLeft;
-          case 'landscapeRight':
-            return DeviceOrientation.landscapeRight;
-          case 'portraitUp':
-            return DeviceOrientation.portraitUp;
-          case 'portraitDown':
-            return DeviceOrientation.portraitDown;
-          default:
-            return DeviceOrientation.portraitUp;
-        }
-      }).toList();
-    }
+    // Load orientations using converter - NO DUPLICATION!
+    final orientationList = prefs.getStringList(StorageKeys.orientations);
+    final orientations = orientationList != null
+        ? OrientationConverter.listFromString(orientationList)
+        : <DeviceOrientation>[];
 
-    // load per-widget colors
-    final widgetColorsJson = prefs.getString('widget_colors');
+    // Load widget colors
+    final widgetColorsJson = prefs.getString(StorageKeys.widgetColors);
     Map<String, int> widgetColors = {};
     if (widgetColorsJson != null) {
       try {
@@ -220,17 +251,19 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
         });
       } catch (_) {}
     }
+
     emit(
-      state.copyWith(
+      SettingsState(
         orientations: orientations,
-        fontFamily: family,
-        fontSize: size,
-        fontColorValue: color,
         keepScreenOn: keepOn,
         fullscreen: full,
         burnInProtection: burnIn,
         burnInMode: burnInMode,
         layoutMode: layout,
+        fontFamily: family,
+        fontSize: size,
+        fontColorValue: color,
+        backgroundColorValue: bgColor,
         darkMode: dark,
         widgetColors: widgetColors,
       ),
@@ -242,7 +275,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     Emitter<SettingsState> emit,
   ) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_kKeepScreenOn, e.keepOn);
+    await prefs.setBool(StorageKeys.keepScreenOn, e.keepOn);
     emit(state.copyWith(keepScreenOn: e.keepOn));
   }
 
@@ -251,7 +284,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     Emitter<SettingsState> emit,
   ) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_kFullscreen, e.fullscreen);
+    await prefs.setBool(StorageKeys.fullscreen, e.fullscreen);
     emit(state.copyWith(fullscreen: e.fullscreen));
   }
 
@@ -260,7 +293,10 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     Emitter<SettingsState> emit,
   ) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_kLayoutMode, e.mode == LayoutMode.grid2 ? 1 : 0);
+    await prefs.setInt(
+      StorageKeys.layoutMode,
+      e.mode == LayoutMode.grid2 ? 1 : 0,
+    );
     emit(state.copyWith(layoutMode: e.mode));
   }
 
@@ -269,7 +305,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     Emitter<SettingsState> emit,
   ) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_kThemeDark, e.dark);
+    await prefs.setBool(StorageKeys.themeDark, e.dark);
     emit(state.copyWith(darkMode: e.dark));
   }
 
@@ -278,7 +314,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     Emitter<SettingsState> emit,
   ) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_kFontFamily, e.family);
+    await prefs.setString(StorageKeys.fontFamily, e.family);
     emit(state.copyWith(fontFamily: e.family));
   }
 
@@ -287,7 +323,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     Emitter<SettingsState> emit,
   ) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setDouble(_kFontSize, e.size);
+    await prefs.setDouble(StorageKeys.fontSize, e.size);
     emit(state.copyWith(fontSize: e.size));
   }
 
@@ -296,8 +332,17 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     Emitter<SettingsState> emit,
   ) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_kFontColor, e.colorValue);
+    await prefs.setInt(StorageKeys.fontColor, e.colorValue);
     emit(state.copyWith(fontColorValue: e.colorValue));
+  }
+
+  Future<void> _onUpdateBackgroundColor(
+    UpdateBackgroundColor e,
+    Emitter<SettingsState> emit,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('background_color', e.colorValue);
+    emit(state.copyWith(backgroundColorValue: e.colorValue));
   }
 
   Future<void> _onUpdateWidgetColor(
@@ -305,7 +350,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     Emitter<SettingsState> emit,
   ) async {
     final prefs = await SharedPreferences.getInstance();
-    final jsonStr = prefs.getString('widget_colors');
+    final jsonStr = prefs.getString(StorageKeys.widgetColors);
     Map<String, dynamic> map = {};
     if (jsonStr != null) {
       try {
@@ -313,8 +358,8 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
       } catch (_) {}
     }
     map[e.widgetKey] = e.colorValue;
-    await prefs.setString('widget_colors', json.encode(map));
-    // create typed map
+    await prefs.setString(StorageKeys.widgetColors, json.encode(map));
+
     final typed = Map<String, int>.fromEntries(
       map.entries.map(
         (kv) => MapEntry(
@@ -333,7 +378,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     Emitter<SettingsState> emit,
   ) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_kBurnInProtection, e.enabled);
+    await prefs.setBool(StorageKeys.burnInProtection, e.enabled);
     emit(state.copyWith(burnInProtection: e.enabled));
   }
 
@@ -342,10 +387,9 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     Emitter<SettingsState> emit,
   ) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_kBurnInMode, e.mode.index);
-    // Also update burnInProtection based on mode
+    await prefs.setInt(StorageKeys.burnInMode, e.mode.index);
     final enabled = e.mode != BurnInMode.off;
-    await prefs.setBool(_kBurnInProtection, enabled);
+    await prefs.setBool(StorageKeys.burnInProtection, enabled);
     emit(state.copyWith(burnInMode: e.mode, burnInProtection: enabled));
   }
 
@@ -354,20 +398,11 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     Emitter<SettingsState> emit,
   ) async {
     final prefs = await SharedPreferences.getInstance();
-    // Convert orientations to string list for storage
-    final orientationStrings = e.orientations.map((o) {
-      switch (o) {
-        case DeviceOrientation.landscapeLeft:
-          return 'landscapeLeft';
-        case DeviceOrientation.landscapeRight:
-          return 'landscapeRight';
-        case DeviceOrientation.portraitUp:
-          return 'portraitUp';
-        case DeviceOrientation.portraitDown:
-          return 'portraitDown';
-      }
-    }).toList();
-    await prefs.setStringList('settings_orientations', orientationStrings);
+    // Use converter - NO DUPLICATION!
+    final orientationStrings = OrientationConverter.listToString(
+      e.orientations,
+    );
+    await prefs.setStringList(StorageKeys.orientations, orientationStrings);
     emit(state.copyWith(orientations: e.orientations));
   }
 }

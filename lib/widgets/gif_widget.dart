@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../core/services/error_handler.dart';
+import '../core/services/haptic_service.dart';
 
 class GifWidget extends StatefulWidget {
   const GifWidget({super.key});
@@ -12,8 +15,8 @@ class GifWidget extends StatefulWidget {
 }
 
 class _GifWidgetState extends State<GifWidget> {
-  // Tenor API key (public)
-  static const String _tenorApiKey = 'AIzaSyAWL6FNvMOE4Jx5l5gwYLNLZWRGzVsyauo';
+  // Tenor API key from environment
+  static String get _tenorApiKey => dotenv.env['TENOR_API_KEY'] ?? '';
 
   // Default GIF list - cute cats that are safe
   static const List<Map<String, String>> _defaultGifs = [
@@ -37,20 +40,6 @@ class _GifWidgetState extends State<GifWidget> {
       'name': 'Ted Dance',
       'url': 'https://media.tenor.com/VQBahlBHyn8AAAAm/ted-puppy.webp',
       'preview': 'https://media.tenor.com/VQBahlBHyn8AAAAe/ted-puppy.webp',
-    },
-    {
-      'id': 'cat_typing',
-      'name': 'Cat Typing',
-      'url':
-          'https://media1.tenor.com/m/Ax7JUhhhMt4AAAAd/angry-typing-kitty.gif',
-      'preview': 'https://media.tenor.com/CMbgfhoGn1cAAAAe/cat-typing.webp',
-    },
-    {
-      'id': 'curious_cat',
-      'name': 'Curious Cat',
-      'url': 'https://media1.tenor.com/m/ZfR68DdhQBsAAAAd/cat-curious-cat.gif',
-      'preview':
-          'https://media.tenor.com/6Y1b0k1bXHAAAAAe/cat-curious-cat.webp',
     },
   ];
 
@@ -132,6 +121,11 @@ class _GifWidgetState extends State<GifWidget> {
     if (_isLoadingMore) return;
     if (_loadedCount >= _maxGifs && loadMore) return;
 
+    if (_tenorApiKey.isEmpty) {
+      ErrorHandler().handleApiError('Tenor', 'API key not configured');
+      return;
+    }
+
     setState(() => _isLoadingMore = true);
 
     try {
@@ -171,15 +165,18 @@ class _GifWidgetState extends State<GifWidget> {
         });
 
         await _saveSearchedGifs();
+      } else {
+        ErrorHandler().handleApiError('Tenor', 'HTTP ${response.statusCode}');
       }
-    } catch (e) {
-      debugPrint('Error searching Tenor: $e');
+    } catch (e, stack) {
+      ErrorHandler().handleApiError('Tenor', e, stackTrace: stack);
     } finally {
       setState(() => _isLoadingMore = false);
     }
   }
 
   void _selectGif(Map<String, String> gif) {
+    HapticService().medium();
     setState(() {
       _selectedGifId = gif['id'];
       _selectedGifUrl = gif['url'];
@@ -189,6 +186,7 @@ class _GifWidgetState extends State<GifWidget> {
   }
 
   void _clearSelection() async {
+    HapticService().light();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('selected_gif_id');
     await prefs.remove('selected_gif_url');

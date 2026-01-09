@@ -36,8 +36,7 @@ class WeatherWidget extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             ElevatedButton(
-              onPressed: () =>
-                  context.read<WeatherBloc>().add(LoadWeather(lat, lon)),
+              onPressed: () => context.read<WeatherBloc>().add(LoadWeather()),
               child: const Text('Refresh'),
             ),
           ],

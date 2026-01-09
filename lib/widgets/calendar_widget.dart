@@ -61,7 +61,7 @@ class _CalendarWidgetState extends State<CalendarWidget> {
               builder: (context, state) {
                 if (state.loading) return const CircularProgressIndicator();
                 if (state.error != null) return Text('Error: ${state.error}');
-                if (state.events.isEmpty)
+                if (state.events.isEmpty) {
                   return Column(
                     children: [
                       const Text('No upcoming events'),
@@ -72,6 +72,7 @@ class _CalendarWidgetState extends State<CalendarWidget> {
                       ),
                     ],
                   );
+                }
                 return Column(
                   children: [
                     for (final ev in state.events)
