@@ -6,11 +6,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 // Clock style types - simplified to 2 types
 enum ClockStyle { analog, digital }
 
+// Digital customization mode
+enum DigitalCustomMode { template, custom }
+
 class ClockState extends Equatable {
   final DateTime now;
   final ClockStyle style;
   // Digital theme index
   final int digitalThemeIndex;
+  // Digital custom mode
+  final DigitalCustomMode digitalMode;
+  final int digitalCustomTextColor;
+  final int digitalCustomBackgroundColor;
   // Analog individual colors
   final int analogHourColor;
   final int analogMinuteColor;
@@ -21,6 +28,9 @@ class ClockState extends Equatable {
     required this.now,
     this.style = ClockStyle.analog,
     this.digitalThemeIndex = 0,
+    this.digitalMode = DigitalCustomMode.template,
+    this.digitalCustomTextColor = 0xFFFFFFFF,
+    this.digitalCustomBackgroundColor = 0xFF000000,
     this.analogHourColor = 0xFFFFFFFF,
     this.analogMinuteColor = 0xFFFFFFFF,
     this.analogSecondColor = 0xFFFF5722,
@@ -31,6 +41,9 @@ class ClockState extends Equatable {
     DateTime? now,
     ClockStyle? style,
     int? digitalThemeIndex,
+    DigitalCustomMode? digitalMode,
+    int? digitalCustomTextColor,
+    int? digitalCustomBackgroundColor,
     int? analogHourColor,
     int? analogMinuteColor,
     int? analogSecondColor,
@@ -39,6 +52,11 @@ class ClockState extends Equatable {
     now: now ?? this.now,
     style: style ?? this.style,
     digitalThemeIndex: digitalThemeIndex ?? this.digitalThemeIndex,
+    digitalMode: digitalMode ?? this.digitalMode,
+    digitalCustomTextColor:
+        digitalCustomTextColor ?? this.digitalCustomTextColor,
+    digitalCustomBackgroundColor:
+        digitalCustomBackgroundColor ?? this.digitalCustomBackgroundColor,
     analogHourColor: analogHourColor ?? this.analogHourColor,
     analogMinuteColor: analogMinuteColor ?? this.analogMinuteColor,
     analogSecondColor: analogSecondColor ?? this.analogSecondColor,
@@ -50,6 +68,9 @@ class ClockState extends Equatable {
     now,
     style,
     digitalThemeIndex,
+    digitalMode,
+    digitalCustomTextColor,
+    digitalCustomBackgroundColor,
     analogHourColor,
     analogMinuteColor,
     analogSecondColor,
@@ -91,6 +112,21 @@ class UpdateAnalogBackgroundColor extends ClockEvent {
   UpdateAnalogBackgroundColor(this.color);
 }
 
+class UpdateDigitalMode extends ClockEvent {
+  final DigitalCustomMode mode;
+  UpdateDigitalMode(this.mode);
+}
+
+class UpdateDigitalCustomTextColor extends ClockEvent {
+  final int color;
+  UpdateDigitalCustomTextColor(this.color);
+}
+
+class UpdateDigitalCustomBackgroundColor extends ClockEvent {
+  final int color;
+  UpdateDigitalCustomBackgroundColor(this.color);
+}
+
 class LoadClockSettings extends ClockEvent {}
 
 class ClockBloc extends Bloc<ClockEvent, ClockState> {
@@ -100,6 +136,9 @@ class ClockBloc extends Bloc<ClockEvent, ClockState> {
     on<Tick>((e, emit) => emit(state.copyWith(now: DateTime.now())));
     on<ChangeClockStyle>(_onChangeStyle);
     on<UpdateDigitalTheme>(_onUpdateDigitalTheme);
+    on<UpdateDigitalMode>(_onUpdateDigitalMode);
+    on<UpdateDigitalCustomTextColor>(_onUpdateDigitalTextColor);
+    on<UpdateDigitalCustomBackgroundColor>(_onUpdateDigitalBgColor);
     on<UpdateAnalogHourColor>(_onUpdateAnalogHour);
     on<UpdateAnalogMinuteColor>(_onUpdateAnalogMinute);
     on<UpdateAnalogSecondColor>(_onUpdateAnalogSecond);
@@ -117,6 +156,9 @@ class ClockBloc extends Bloc<ClockEvent, ClockState> {
     final prefs = await SharedPreferences.getInstance();
     final styleIndex = prefs.getInt('clock_style') ?? 0;
     final digitalTheme = prefs.getInt('clock_digital_theme') ?? 0;
+    final digitalModeIndex = prefs.getInt('clock_digital_mode') ?? 0;
+    final digitalTextColor = prefs.getInt('clock_digital_text') ?? 0xFFFFFFFF;
+    final digitalBgColor = prefs.getInt('clock_digital_bg') ?? 0xFF000000;
     final hourColor = prefs.getInt('clock_analog_hour') ?? 0xFFFFFFFF;
     final minuteColor = prefs.getInt('clock_analog_minute') ?? 0xFFFFFFFF;
     final secondColor = prefs.getInt('clock_analog_second') ?? 0xFFFF5722;
@@ -127,6 +169,13 @@ class ClockBloc extends Bloc<ClockEvent, ClockState> {
         style: ClockStyle
             .values[styleIndex.clamp(0, ClockStyle.values.length - 1)],
         digitalThemeIndex: digitalTheme,
+        digitalMode:
+            DigitalCustomMode.values[digitalModeIndex.clamp(
+              0,
+              DigitalCustomMode.values.length - 1,
+            )],
+        digitalCustomTextColor: digitalTextColor,
+        digitalCustomBackgroundColor: digitalBgColor,
         analogHourColor: hourColor,
         analogMinuteColor: minuteColor,
         analogSecondColor: secondColor,
@@ -187,6 +236,33 @@ class ClockBloc extends Bloc<ClockEvent, ClockState> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('clock_analog_background', e.color);
     emit(state.copyWith(analogBackgroundColor: e.color));
+  }
+
+  Future<void> _onUpdateDigitalMode(
+    UpdateDigitalMode e,
+    Emitter<ClockState> emit,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('clock_digital_mode', e.mode.index);
+    emit(state.copyWith(digitalMode: e.mode));
+  }
+
+  Future<void> _onUpdateDigitalTextColor(
+    UpdateDigitalCustomTextColor e,
+    Emitter<ClockState> emit,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('clock_digital_text', e.color);
+    emit(state.copyWith(digitalCustomTextColor: e.color));
+  }
+
+  Future<void> _onUpdateDigitalBgColor(
+    UpdateDigitalCustomBackgroundColor e,
+    Emitter<ClockState> emit,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('clock_digital_bg', e.color);
+    emit(state.copyWith(digitalCustomBackgroundColor: e.color));
   }
 
   @override

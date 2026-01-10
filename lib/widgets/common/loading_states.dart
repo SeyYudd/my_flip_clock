@@ -33,61 +33,6 @@ class LoadingWidget extends StatelessWidget {
   }
 }
 
-/// Standard empty state widget
-class EmptyStateWidget extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String? message;
-  final VoidCallback? onAction;
-  final String? actionLabel;
-
-  const EmptyStateWidget({
-    super.key,
-    required this.icon,
-    required this.title,
-    this.message,
-    this.onAction,
-    this.actionLabel,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 64, color: Colors.white30),
-            const SizedBox(height: 16),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.white70,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            if (message != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                message!,
-                style: const TextStyle(fontSize: 14, color: Colors.white54),
-                textAlign: TextAlign.center,
-              ),
-            ],
-            if (onAction != null && actionLabel != null) ...[
-              const SizedBox(height: 24),
-              ElevatedButton(onPressed: onAction, child: Text(actionLabel!)),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 /// Standard error widget
 class ErrorStateWidget extends StatelessWidget {

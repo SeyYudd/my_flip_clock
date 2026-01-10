@@ -95,7 +95,9 @@ class _QuoteWidgetState extends State<QuoteWidget> {
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
                     hintText: 'Masukkan quote...',
-                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                    hintStyle: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.5),
+                    ),
                     filled: true,
                     fillColor: Colors.grey[800],
                     border: OutlineInputBorder(
@@ -258,7 +260,7 @@ class _QuoteWidgetState extends State<QuoteWidget> {
                 end: Alignment.bottomRight,
                 colors: [
                   _backgroundColor,
-                  _backgroundColor.withOpacity(0.7),
+                  _backgroundColor.withValues(alpha: 0.7),
                   Colors.black,
                 ],
               ),
@@ -272,7 +274,7 @@ class _QuoteWidgetState extends State<QuoteWidget> {
                   Icon(
                     Icons.format_quote,
                     size: 32,
-                    color: _textColor.withOpacity(0.5),
+                    color: _textColor.withValues(alpha: 0.5),
                   ),
                   const SizedBox(height: 16),
                   // Quote text
@@ -302,7 +304,7 @@ class _QuoteWidgetState extends State<QuoteWidget> {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(Icons.edit, color: Colors.white, size: 20),

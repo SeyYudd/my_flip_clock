@@ -238,14 +238,14 @@ class _PhotoFrameWidgetState extends State<PhotoFrameWidget>
                     Icon(
                       Icons.photo_library_outlined,
                       size: 80,
-                      color: Colors.white.withOpacity(0.3),
+                      color: Colors.white.withValues(alpha: 0.3),
                     ),
                     const SizedBox(height: 16),
                     Text(
                       'No Photos',
                       style: TextStyle(
                         fontSize: 20,
-                        color: Colors.white.withOpacity(0.5),
+                        color: Colors.white.withValues(alpha: 0.5),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -253,7 +253,7 @@ class _PhotoFrameWidgetState extends State<PhotoFrameWidget>
                       'Grant photo access to display gallery',
                       style: TextStyle(
                         fontSize: 14,
-                        color: Colors.white.withOpacity(0.3),
+                        color: Colors.white.withValues(alpha: 0.3),
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -262,7 +262,7 @@ class _PhotoFrameWidgetState extends State<PhotoFrameWidget>
                       icon: const Icon(Icons.refresh),
                       label: const Text('Retry'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white.withOpacity(0.2),
+                        backgroundColor: Colors.white.withValues(alpha: 0.2),
                       ),
                     ),
                   ],
@@ -322,7 +322,7 @@ class _PhotoFrameWidgetState extends State<PhotoFrameWidget>
                             icon: Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
+                                color: Colors.white.withValues(alpha: 0.2),
                                 shape: BoxShape.circle,
                               ),
                               child: const Icon(
@@ -337,7 +337,7 @@ class _PhotoFrameWidgetState extends State<PhotoFrameWidget>
                             icon: Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
+                                color: Colors.white.withValues(alpha: 0.2),
                                 shape: BoxShape.circle,
                               ),
                               child: const Icon(

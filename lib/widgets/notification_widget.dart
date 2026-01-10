@@ -166,7 +166,7 @@ class _NotificationWidgetState extends State<NotificationWidget> {
             Icon(
               Icons.notifications_off_outlined,
               size: 64,
-              color: Colors.white.withOpacity(0.3),
+              color: Colors.white.withValues(alpha: 0.3),
             ),
             const SizedBox(height: 16),
             Text(
@@ -174,7 +174,7 @@ class _NotificationWidgetState extends State<NotificationWidget> {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Colors.white.withOpacity(0.8),
+                color: Colors.white.withValues(alpha: 0.8),
               ),
             ),
             const SizedBox(height: 8),
@@ -182,7 +182,7 @@ class _NotificationWidgetState extends State<NotificationWidget> {
               'Grant access to display notifications',
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.white.withOpacity(0.5),
+                color: Colors.white.withValues(alpha: 0.5),
               ),
             ),
             const SizedBox(height: 24),
@@ -204,7 +204,7 @@ class _NotificationWidgetState extends State<NotificationWidget> {
               onPressed: _checkPermission,
               child: Text(
                 'Refresh',
-                style: TextStyle(color: Colors.white.withOpacity(0.6)),
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.6)),
               ),
             ),
           ],
@@ -221,14 +221,14 @@ class _NotificationWidgetState extends State<NotificationWidget> {
           Icon(
             Icons.notifications_none,
             size: 64,
-            color: Colors.white.withOpacity(0.2),
+            color: Colors.white.withValues(alpha: 0.2),
           ),
           const SizedBox(height: 16),
           Text(
             'No Notifications',
             style: TextStyle(
               fontSize: 18,
-              color: Colors.white.withOpacity(0.5),
+              color: Colors.white.withValues(alpha: 0.5),
             ),
           ),
           const SizedBox(height: 8),
@@ -236,7 +236,7 @@ class _NotificationWidgetState extends State<NotificationWidget> {
             'You\'re all caught up!',
             style: TextStyle(
               fontSize: 14,
-              color: Colors.white.withOpacity(0.3),
+              color: Colors.white.withValues(alpha: 0.3),
             ),
           ),
         ],
@@ -254,7 +254,7 @@ class _NotificationWidgetState extends State<NotificationWidget> {
             children: [
               Icon(
                 Icons.notifications,
-                color: Colors.white.withOpacity(0.7),
+                color: Colors.white.withValues(alpha: 0.7),
                 size: 20,
               ),
               const SizedBox(width: 8),
@@ -263,7 +263,7 @@ class _NotificationWidgetState extends State<NotificationWidget> {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white.withOpacity(0.8),
+                  color: Colors.white.withValues(alpha: 0.8),
                 ),
               ),
               const Spacer(),
@@ -271,7 +271,7 @@ class _NotificationWidgetState extends State<NotificationWidget> {
                 '${_notifications.length}',
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.white.withOpacity(0.5),
+                  color: Colors.white.withValues(alpha: 0.5),
                 ),
               ),
             ],
@@ -311,9 +311,9 @@ class _NotificationWidgetState extends State<NotificationWidget> {
       margin: const EdgeInsets.symmetric(vertical: 4),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -323,7 +323,7 @@ class _NotificationWidgetState extends State<NotificationWidget> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: notification.icon != null
@@ -351,7 +351,7 @@ class _NotificationWidgetState extends State<NotificationWidget> {
                         notification.appName,
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.white.withOpacity(0.5),
+                          color: Colors.white.withValues(alpha: 0.5),
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -360,7 +360,7 @@ class _NotificationWidgetState extends State<NotificationWidget> {
                       timeStr,
                       style: TextStyle(
                         fontSize: 11,
-                        color: Colors.white.withOpacity(0.4),
+                        color: Colors.white.withValues(alpha: 0.4),
                       ),
                     ),
                   ],
@@ -383,7 +383,7 @@ class _NotificationWidgetState extends State<NotificationWidget> {
                     notification.text,
                     style: TextStyle(
                       fontSize: 13,
-                      color: Colors.white.withOpacity(0.7),
+                      color: Colors.white.withValues(alpha: 0.7),
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -404,7 +404,7 @@ class _NotificationWidgetState extends State<NotificationWidget> {
         style: TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.bold,
-          color: Colors.white.withOpacity(0.5),
+          color: Colors.white.withValues(alpha: 0.5),
         ),
       ),
     );

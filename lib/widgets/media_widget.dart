@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:my_stand_clock/screens/page_empty.dart';
 import '../blocs/media_bloc.dart';
 
 class MediaWidget extends StatefulWidget {
@@ -87,9 +88,9 @@ class _MediaWidgetState extends State<MediaWidget> {
                 thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
                 overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
                 activeTrackColor: Colors.white,
-                inactiveTrackColor: Colors.white.withOpacity(0.3),
+                inactiveTrackColor: Colors.white.withValues(alpha: 0.3),
                 thumbColor: Colors.white,
-                overlayColor: Colors.white.withOpacity(0.2),
+                overlayColor: Colors.white.withValues(alpha: 0.2),
               ),
               child: Slider(
                 value: state.position.toDouble().clamp(
@@ -117,14 +118,14 @@ class _MediaWidgetState extends State<MediaWidget> {
                     _formatDuration(state.position),
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.white.withOpacity(0.7),
+                      color: Colors.white.withValues(alpha: 0.7),
                     ),
                   ),
                   Text(
                     _formatDuration(state.duration),
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.white.withOpacity(0.7),
+                      color: Colors.white.withValues(alpha: 0.7),
                     ),
                   ),
                 ],
@@ -154,7 +155,21 @@ class _MediaWidgetState extends State<MediaWidget> {
       builder: (context, state) {
         // No media playing
         if (state.title.isEmpty) {
-          return _buildEmptyState();
+          return Center(
+            child: PageEmpty(
+              title: 'No Music Playing',
+              icon: Icons.music_note,
+              message: _notificationAccess
+                  ? 'Start playing music on your device'
+                  : 'Enable notification access to control media',
+              widget: !_notificationAccess
+                  ? ElevatedButton(
+                      onPressed: _openNotificationSettings,
+                      child: const Text('Enable Access'),
+                    )
+                  : null,
+            ),
+          );
         }
 
         // Decode album art
@@ -167,47 +182,6 @@ class _MediaWidgetState extends State<MediaWidget> {
 
         return _buildPlayerCard(state, artBytes);
       },
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: Container(
-        height: 200,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Colors.grey.shade800, Colors.grey.shade900],
-          ),
-        ),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.music_note, size: 48, color: Colors.grey.shade600),
-              const SizedBox(height: 12),
-              Text(
-                'No Music Playing',
-                style: TextStyle(fontSize: 16, color: Colors.grey.shade500),
-              ),
-              if (!_notificationAccess) ...[
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: _openNotificationSettings,
-                  icon: const Icon(Icons.settings, size: 18),
-                  label: const Text('Enable Notification Access'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue.shade700,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
     );
   }
 
@@ -227,7 +201,7 @@ class _MediaWidgetState extends State<MediaWidget> {
                 child: Image.memory(
                   artBytes,
                   fit: BoxFit.cover,
-                  color: Colors.black.withOpacity(0.5),
+                  color: Colors.black.withValues(alpha: 0.5),
                   colorBlendMode: BlendMode.darken,
                 ),
               ),
@@ -267,7 +241,7 @@ class _MediaWidgetState extends State<MediaWidget> {
                             borderRadius: BorderRadius.circular(8),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.3),
+                                color: Colors.black.withValues(alpha: 0.3),
                                 blurRadius: 10,
                                 offset: const Offset(0, 4),
                               ),
@@ -306,7 +280,7 @@ class _MediaWidgetState extends State<MediaWidget> {
                                 state.artist,
                                 style: TextStyle(
                                   fontSize: 14,
-                                  color: Colors.white.withOpacity(0.8),
+                                  color: Colors.white.withValues(alpha: 0.8),
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -317,7 +291,7 @@ class _MediaWidgetState extends State<MediaWidget> {
                                   state.album,
                                   style: TextStyle(
                                     fontSize: 12,
-                                    color: Colors.white.withOpacity(0.6),
+                                    color: Colors.white.withValues(alpha: 0.6),
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -363,7 +337,7 @@ class _MediaWidgetState extends State<MediaWidget> {
                               color: Colors.white,
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.2),
+                                  color: Colors.black.withValues(alpha: 0.2),
                                   blurRadius: 8,
                                   offset: const Offset(0, 2),
                                 ),

@@ -1,7 +1,7 @@
-import 'dart:async';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:carousel_slider/carousel_slider.dart';
 import 'package:analog_clock/analog_clock.dart';
 import 'package:my_stand_clock/widgets/container_widget.dart';
 import '../blocs/clock_bloc.dart';
@@ -15,9 +15,10 @@ class ClockWidget extends StatefulWidget {
 
 class _ClockWidgetState extends State<ClockWidget> {
   bool _showControls = false;
-  Timer? _hideTimer;
+  final CarouselSliderController _carouselController =
+      CarouselSliderController();
 
-  // Predefined colors for both analog and digital
+  // Predefined colors for analog clock elements
   static const List<Color> availableColors = [
     Colors.white,
     Colors.black,
@@ -89,150 +90,94 @@ class _ClockWidgetState extends State<ClockWidget> {
   ];
 
   @override
-  void dispose() {
-    _hideTimer?.cancel();
-    super.dispose();
-  }
-
-  void _startHideTimer() {
-    _hideTimer?.cancel();
-    _hideTimer = Timer(const Duration(seconds: 3), () {
-      if (mounted) {
-        setState(() => _showControls = false);
-      }
-    });
-  }
-
-  void _handleTap() {
-    setState(() => _showControls = true);
-    _startHideTimer();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return BlocBuilder<ClockBloc, ClockState>(
       buildWhen: (prev, curr) =>
           prev.style != curr.style ||
           prev.now.second != curr.now.second ||
           prev.digitalThemeIndex != curr.digitalThemeIndex ||
-          prev.digitalMode != curr.digitalMode ||
-          prev.digitalCustomTextColor != curr.digitalCustomTextColor ||
-          prev.digitalCustomBackgroundColor !=
-              curr.digitalCustomBackgroundColor ||
           prev.analogHourColor != curr.analogHourColor ||
           prev.analogMinuteColor != curr.analogMinuteColor ||
           prev.analogSecondColor != curr.analogSecondColor ||
           prev.analogBackgroundColor != curr.analogBackgroundColor,
       builder: (context, state) {
         return GestureDetector(
-          onTap: _handleTap,
+          onTap: () {
+            setState(() {
+              _showControls = !_showControls;
+            });
+          },
           child: Container(
             color: Colors.transparent,
             child: Stack(
               children: [
-                // Main content
-                state.style == ClockStyle.analog
-                    ? _buildAnalogClock(state)
-                    : _buildDigitalClock(state),
-
-                // Controls overlay
-                if (_showControls) _buildControls(context, state),
+                // Main carousel
+                CarouselSlider(
+                  carouselController: _carouselController,
+                  options: CarouselOptions(
+                    height: double.infinity,
+                    viewportFraction: 1.0,
+                    scrollDirection: Axis.vertical,
+                    enableInfiniteScroll: true,
+                    initialPage: state.style.index,
+                    onPageChanged: (index, reason) {
+                      context.read<ClockBloc>().add(
+                        ChangeClockStyle(ClockStyle.values[index]),
+                      );
+                    },
+                  ),
+                  items: [_buildAnalogClock(state), _buildDigitalClock(state)],
+                ),
+                // Edit button overlay
+                if (_showControls)
+                  Positioned(
+                    top: 20,
+                    right: 20,
+                    child: GestureDetector(
+                      onTap: () => _showEditDialog(context, state),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white30,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(
+                          Icons.edit,
+                          size: 20,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ),
+                  ),
+                // Style indicator
+                if (_showControls)
+                  Positioned(
+                    bottom: 20,
+                    left: 0,
+                    right: 0,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(2, (index) {
+                        return Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: state.style.index == index
+                                ? Colors.white
+                                : Colors.white30,
+                          ),
+                        );
+                      }),
+                    ),
+                  ),
               ],
             ),
           ),
         );
       },
-    );
-  }
-
-  Widget _buildControls(BuildContext context, ClockState state) {
-    return Positioned(
-      top: 12,
-      right: 12,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          // Style toggle
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.black54,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildStyleButton(
-                  icon: Icons.access_time,
-                  label: 'Analog',
-                  isSelected: state.style == ClockStyle.analog,
-                  onTap: () {
-                    context.read<ClockBloc>().add(
-                      ChangeClockStyle(ClockStyle.analog),
-                    );
-                  },
-                ),
-                const SizedBox(width: 4),
-                _buildStyleButton(
-                  icon: Icons.pin,
-                  label: 'Digital',
-                  isSelected: state.style == ClockStyle.digital,
-                  onTap: () {
-                    context.read<ClockBloc>().add(
-                      ChangeClockStyle(ClockStyle.digital),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          // Settings button
-          GestureDetector(
-            onTap: () => _showEditDialog(context, state),
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.black54,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: const Icon(Icons.settings, size: 20, color: Colors.white),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStyleButton({
-    required IconData icon,
-    required String label,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.white24 : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 16, color: Colors.white),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -263,10 +208,12 @@ class _ClockWidgetState extends State<ClockWidget> {
   }
 
   Widget _buildDigitalClock(ClockState state) {
+    final theme = digitalThemes[state.digitalThemeIndex];
     final hour = state.now.hour.toString().padLeft(2, '0');
     final minute = state.now.minute.toString().padLeft(2, '0');
     final second = state.now.second.toString().padLeft(2, '0');
 
+    // Format date and day
     final date =
         '${state.now.day.toString().padLeft(2, '0')}/${state.now.month.toString().padLeft(2, '0')}/${state.now.year}';
     final dayNames = [
@@ -280,23 +227,14 @@ class _ClockWidgetState extends State<ClockWidget> {
     ];
     final dayName = dayNames[state.now.weekday - 1];
 
-    Color primaryColor;
-    Color backgroundColor;
-
-    if (state.digitalMode == DigitalCustomMode.template) {
-      final theme = digitalThemes[state.digitalThemeIndex];
-      primaryColor = theme.primaryColor;
-      backgroundColor = theme.backgroundColor;
-    } else {
-      primaryColor = Color(state.digitalCustomTextColor);
-      backgroundColor = Color(state.digitalCustomBackgroundColor);
-    }
-
     return LayoutBuilder(
       builder: (context, constraints) {
         final availableHeight = constraints.maxHeight;
+
+        // Determine layout based on available height
         final isVerticalLayout = availableHeight > 400;
 
+        // Calculate responsive font sizes
         final maxFontSize = isVerticalLayout
             ? (availableHeight * 0.25).clamp(60.0, 200.0)
             : (availableHeight * 0.4).clamp(60.0, 200.0);
@@ -304,16 +242,18 @@ class _ClockWidgetState extends State<ClockWidget> {
         final secondFontSize = (maxFontSize / 8).clamp(12.0, 24.0);
 
         if (isVerticalLayout) {
+          // Vertical layout for tall screens
           return Padding(
             padding: const EdgeInsets.all(8.0),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               children: [
+                // Hour with date
                 Flexible(
                   flex: 1,
                   child: ContainerWidget(
-                    color: backgroundColor.withValues(alpha: 0.5),
+                    color: theme.primaryColor.withValues(alpha: 0.2),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -321,7 +261,7 @@ class _ClockWidgetState extends State<ClockWidget> {
                           date,
                           style: TextStyle(
                             fontSize: dateFontSize,
-                            color: primaryColor.withValues(alpha: 0.6),
+                            color: theme.primaryColor.withValues(alpha: 0.6),
                             fontWeight: FontWeight.w500,
                             fontFamily: 'monospace',
                           ),
@@ -333,7 +273,7 @@ class _ClockWidgetState extends State<ClockWidget> {
                               hour,
                               style: TextStyle(
                                 fontSize: maxFontSize,
-                                color: primaryColor,
+                                color: theme.primaryColor,
                                 fontWeight: FontWeight.bold,
                                 fontFamily: 'monospace',
                               ),
@@ -347,10 +287,11 @@ class _ClockWidgetState extends State<ClockWidget> {
                   ),
                 ),
                 const SizedBox(height: 16),
+                // Minute with day name and second
                 Flexible(
                   flex: 1,
                   child: ContainerWidget(
-                    color: backgroundColor.withValues(alpha: 0.5),
+                    color: theme.primaryColor.withValues(alpha: 0.2),
                     child: Stack(
                       children: [
                         Column(
@@ -360,7 +301,9 @@ class _ClockWidgetState extends State<ClockWidget> {
                               dayName,
                               style: TextStyle(
                                 fontSize: dateFontSize,
-                                color: primaryColor.withValues(alpha: 0.6),
+                                color: theme.primaryColor.withValues(
+                                  alpha: 0.6,
+                                ),
                                 fontWeight: FontWeight.w500,
                                 fontFamily: 'monospace',
                               ),
@@ -372,7 +315,7 @@ class _ClockWidgetState extends State<ClockWidget> {
                                   minute,
                                   style: TextStyle(
                                     fontSize: maxFontSize,
-                                    color: primaryColor,
+                                    color: theme.primaryColor,
                                     fontWeight: FontWeight.bold,
                                     fontFamily: 'monospace',
                                   ),
@@ -390,7 +333,7 @@ class _ClockWidgetState extends State<ClockWidget> {
                             second,
                             style: TextStyle(
                               fontSize: secondFontSize,
-                              color: primaryColor.withValues(alpha: 0.7),
+                              color: theme.primaryColor.withValues(alpha: 0.7),
                               fontWeight: FontWeight.bold,
                               fontFamily: 'monospace',
                             ),
@@ -404,15 +347,17 @@ class _ClockWidgetState extends State<ClockWidget> {
             ),
           );
         } else {
+          // Horizontal layout for short screens
           return Padding(
             padding: const EdgeInsets.all(8.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                // Hour with date
                 Flexible(
                   flex: 1,
                   child: ContainerWidget(
-                    color: backgroundColor.withValues(alpha: 0.5),
+                    color: theme.primaryColor.withValues(alpha: 0.2),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -420,7 +365,7 @@ class _ClockWidgetState extends State<ClockWidget> {
                           date,
                           style: TextStyle(
                             fontSize: dateFontSize,
-                            color: primaryColor.withValues(alpha: 0.6),
+                            color: theme.primaryColor.withValues(alpha: 0.6),
                             fontWeight: FontWeight.w500,
                             fontFamily: 'monospace',
                           ),
@@ -432,7 +377,7 @@ class _ClockWidgetState extends State<ClockWidget> {
                               hour,
                               style: TextStyle(
                                 fontSize: maxFontSize,
-                                color: primaryColor,
+                                color: theme.primaryColor,
                                 fontWeight: FontWeight.bold,
                                 fontFamily: 'monospace',
                               ),
@@ -446,10 +391,11 @@ class _ClockWidgetState extends State<ClockWidget> {
                   ),
                 ),
                 const SizedBox(width: 16),
+                // Minute with day name and second
                 Flexible(
                   flex: 1,
                   child: ContainerWidget(
-                    color: backgroundColor.withValues(alpha: 0.5),
+                    color: theme.primaryColor.withValues(alpha: 0.2),
                     child: Stack(
                       children: [
                         Column(
@@ -459,7 +405,9 @@ class _ClockWidgetState extends State<ClockWidget> {
                               dayName,
                               style: TextStyle(
                                 fontSize: dateFontSize,
-                                color: primaryColor.withValues(alpha: 0.6),
+                                color: theme.primaryColor.withValues(
+                                  alpha: 0.6,
+                                ),
                                 fontWeight: FontWeight.w500,
                                 fontFamily: 'monospace',
                               ),
@@ -471,7 +419,7 @@ class _ClockWidgetState extends State<ClockWidget> {
                                   minute,
                                   style: TextStyle(
                                     fontSize: maxFontSize,
-                                    color: primaryColor,
+                                    color: theme.primaryColor,
                                     fontWeight: FontWeight.bold,
                                     fontFamily: 'monospace',
                                   ),
@@ -489,7 +437,7 @@ class _ClockWidgetState extends State<ClockWidget> {
                             second,
                             style: TextStyle(
                               fontSize: secondFontSize,
-                              color: primaryColor.withValues(alpha: 0.7),
+                              color: theme.primaryColor.withValues(alpha: 0.7),
                               fontWeight: FontWeight.bold,
                               fontFamily: 'monospace',
                             ),
@@ -518,195 +466,79 @@ class _ClockWidgetState extends State<ClockWidget> {
   void _showDigitalEditDialog(BuildContext context, ClockState state) {
     showDialog(
       context: context,
-      barrierColor: Colors.black54,
       builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.grey[900]?.withValues(alpha: 0.95),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: Colors.grey[900],
         title: const Text(
-          'Pengaturan Digital Clock',
-          style: TextStyle(color: Colors.white, fontSize: 18),
+          'Pilih Tema Digital',
+          style: TextStyle(color: Colors.white),
         ),
         content: SizedBox(
           width: double.maxFinite,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Mode selector
-              const Text(
-                'Mode',
-                style: TextStyle(color: Colors.white70, fontSize: 14),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildModeButton(
-                      context: context,
-                      label: 'Template',
-                      isSelected:
-                          state.digitalMode == DigitalCustomMode.template,
-                      onTap: () {
-                        context.read<ClockBloc>().add(
-                          UpdateDigitalMode(DigitalCustomMode.template),
-                        );
-                      },
+          height: 400,
+          child: ListView.builder(
+            itemCount: digitalThemes.length,
+            itemBuilder: (context, index) {
+              final theme = digitalThemes[index];
+              final isSelected = state.digitalThemeIndex == index;
+              return GestureDetector(
+                onTap: () {
+                  context.read<ClockBloc>().add(UpdateDigitalTheme(index));
+                  Navigator.pop(ctx);
+                },
+                child: Container(
+                  margin: const EdgeInsets.symmetric(vertical: 4),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: theme.backgroundColor,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isSelected
+                          ? theme.primaryColor
+                          : Colors.transparent,
+                      width: 2,
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _buildModeButton(
-                      context: context,
-                      label: 'Custom',
-                      isSelected: state.digitalMode == DigitalCustomMode.custom,
-                      onTap: () {
-                        context.read<ClockBloc>().add(
-                          UpdateDigitalMode(DigitalCustomMode.custom),
-                        );
-                      },
-                    ),
+                  child: Row(
+                    children: [
+                      Text(
+                        '12:34',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: theme.primaryColor,
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        theme.name,
+                        style: TextStyle(
+                          color: theme.primaryColor.withValues(alpha: 0.8),
+                          fontSize: 14,
+                        ),
+                      ),
+                      const Spacer(),
+                      if (isSelected)
+                        Icon(Icons.check_circle, color: theme.primaryColor),
+                    ],
                   ),
-                ],
-              ),
-              const SizedBox(height: 20),
-
-              // Content based on mode
-              if (state.digitalMode == DigitalCustomMode.template)
-                _buildTemplateSelector(context, state)
-              else
-                _buildCustomColorPicker(context, state),
-            ],
+                ),
+              );
+            },
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Tutup', style: TextStyle(color: Colors.white70)),
+            child: const Text('Tutup'),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildModeButton({
-    required BuildContext context,
-    required String label,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? Colors.blue.withValues(alpha: 0.3)
-              : Colors.white10,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? Colors.blue : Colors.transparent,
-            width: 2,
-          ),
-        ),
-        child: Center(
-          child: Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? Colors.white : Colors.white60,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTemplateSelector(BuildContext context, ClockState state) {
-    return SizedBox(
-      height: 300,
-      child: ListView.builder(
-        itemCount: digitalThemes.length,
-        itemBuilder: (context, index) {
-          final theme = digitalThemes[index];
-          final isSelected = state.digitalThemeIndex == index;
-          return GestureDetector(
-            onTap: () {
-              context.read<ClockBloc>().add(UpdateDigitalTheme(index));
-            },
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: theme.backgroundColor,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isSelected ? theme.primaryColor : Colors.transparent,
-                  width: 2,
-                ),
-              ),
-              child: Row(
-                children: [
-                  Text(
-                    '12:34',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: theme.primaryColor,
-                      fontFamily: 'monospace',
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    theme.name,
-                    style: TextStyle(
-                      color: theme.primaryColor.withValues(alpha: 0.8),
-                      fontSize: 14,
-                    ),
-                  ),
-                  const Spacer(),
-                  if (isSelected)
-                    Icon(
-                      Icons.check_circle,
-                      color: theme.primaryColor,
-                      size: 20,
-                    ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildCustomColorPicker(BuildContext context, ClockState state) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildColorRow(
-          context: context,
-          label: 'Warna Angka',
-          selectedColor: state.digitalCustomTextColor,
-          onColorSelected: (color) {
-            context.read<ClockBloc>().add(UpdateDigitalCustomTextColor(color));
-          },
-        ),
-        const SizedBox(height: 16),
-        _buildColorRow(
-          context: context,
-          label: 'Warna Background',
-          selectedColor: state.digitalCustomBackgroundColor,
-          onColorSelected: (color) {
-            context.read<ClockBloc>().add(
-              UpdateDigitalCustomBackgroundColor(color),
-            );
-          },
-        ),
-      ],
-    );
-  }
-
   void _showAnalogEditDialog(BuildContext context, ClockState state) {
+    // Local state for preview
     int hourColor = state.analogHourColor;
     int minuteColor = state.analogMinuteColor;
     int secondColor = state.analogSecondColor;
@@ -714,17 +546,13 @@ class _ClockWidgetState extends State<ClockWidget> {
 
     showDialog(
       context: context,
-      barrierColor: Colors.black54,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) {
           return AlertDialog(
-            backgroundColor: Colors.grey[900]?.withValues(alpha: 0.95),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
+            backgroundColor: Colors.grey[900],
             title: const Text(
-              'Pengaturan Analog Clock',
-              style: TextStyle(color: Colors.white, fontSize: 18),
+              'Pengaturan Analog',
+              style: TextStyle(color: Colors.white),
             ),
             content: SizedBox(
               width: double.maxFinite,
@@ -733,6 +561,7 @@ class _ClockWidgetState extends State<ClockWidget> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Preview clock
                     Center(
                       child: Container(
                         width: 120,
@@ -759,7 +588,7 @@ class _ClockWidgetState extends State<ClockWidget> {
                     ),
                     _buildColorRow(
                       context: context,
-                      label: 'Jarum Jam',
+                      label: 'Jam',
                       selectedColor: hourColor,
                       onColorSelected: (color) {
                         setDialogState(() => hourColor = color);
@@ -768,7 +597,7 @@ class _ClockWidgetState extends State<ClockWidget> {
                     const SizedBox(height: 16),
                     _buildColorRow(
                       context: context,
-                      label: 'Jarum Menit',
+                      label: 'Menit',
                       selectedColor: minuteColor,
                       onColorSelected: (color) {
                         setDialogState(() => minuteColor = color);
@@ -777,7 +606,7 @@ class _ClockWidgetState extends State<ClockWidget> {
                     const SizedBox(height: 16),
                     _buildColorRow(
                       context: context,
-                      label: 'Jarum Detik',
+                      label: 'Detik',
                       selectedColor: secondColor,
                       onColorSelected: (color) {
                         setDialogState(() => secondColor = color);
@@ -799,13 +628,11 @@ class _ClockWidgetState extends State<ClockWidget> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text(
-                  'Batal',
-                  style: TextStyle(color: Colors.white60),
-                ),
+                child: const Text('Batal'),
               ),
               TextButton(
                 onPressed: () {
+                  // Apply all color changes
                   context.read<ClockBloc>().add(
                     UpdateAnalogHourColor(hourColor),
                   );
@@ -820,10 +647,7 @@ class _ClockWidgetState extends State<ClockWidget> {
                   );
                   Navigator.pop(ctx);
                 },
-                child: const Text(
-                  'Simpan',
-                  style: TextStyle(color: Colors.blue),
-                ),
+                child: const Text('Simpan'),
               ),
             ],
           );
@@ -857,10 +681,9 @@ class _ClockWidgetState extends State<ClockWidget> {
             itemCount: availableColors.length,
             itemBuilder: (context, index) {
               final color = availableColors[index];
-              final colorValue = color.toARGB32();
-              final isSelected = colorValue == selectedColor;
+              final isSelected = color.value == selectedColor;
               return GestureDetector(
-                onTap: () => onColorSelected(colorValue),
+                onTap: () => onColorSelected(color.value),
                 child: Container(
                   width: 36,
                   height: 36,

@@ -151,7 +151,7 @@ class _ConnectivityWidgetState extends State<ConnectivityWidget> {
               margin: const EdgeInsets.only(top: 8),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.purple.withOpacity(0.2),
+                color: Colors.purple.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: Colors.purple, width: 1),
               ),
@@ -172,7 +172,7 @@ class _ConnectivityWidgetState extends State<ConnectivityWidget> {
               margin: const EdgeInsets.only(top: 8),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.2),
+                color: Colors.red.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: Colors.red, width: 1),
               ),
@@ -202,8 +202,8 @@ class _ConnectivityWidgetState extends State<ConnectivityWidget> {
     return Container(
       decoration: BoxDecoration(
         color: isActive
-            ? activeColor.withOpacity(0.15)
-            : Colors.grey.withOpacity(0.1),
+            ? activeColor.withValues(alpha: 0.15)
+            : Colors.grey.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isActive ? activeColor : Colors.grey.shade700,
@@ -258,7 +258,7 @@ class _ConnectivityWidgetState extends State<ConnectivityWidget> {
 
     return Container(
       decoration: BoxDecoration(
-        color: batteryColor.withOpacity(0.15),
+        color: batteryColor.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: batteryColor, width: 1.5),
       ),
@@ -379,7 +379,7 @@ class _ConnectivityCompactWidgetState extends State<ConnectivityCompactWidget> {
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha: 0.15),
         shape: BoxShape.circle,
       ),
       child: Icon(icon, color: color, size: 20),
@@ -399,7 +399,7 @@ class _ConnectivityCompactWidgetState extends State<ConnectivityCompactWidget> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(

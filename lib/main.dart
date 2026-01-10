@@ -12,7 +12,6 @@ import 'blocs/quote_bloc.dart';
 import 'blocs/weather_bloc.dart';
 import 'blocs/media_bloc.dart';
 import 'blocs/calendar_bloc.dart';
-import 'blocs/template_bloc.dart';
 import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'core/theme/app_theme.dart';
@@ -86,7 +85,6 @@ class MyApp extends StatelessWidget {
         BlocProvider(create: (_) => MediaBloc()),
         BlocProvider(create: (_) => CalendarBloc()),
         BlocProvider(create: (_) => WeatherBloc()),
-        BlocProvider(create: (_) => TemplateBloc()..add(LoadTemplate())),
       ],
       child: Builder(
         builder: (context) {

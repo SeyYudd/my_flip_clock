@@ -4,10 +4,8 @@ import '../clock_widget.dart';
 import '../media_widget.dart';
 import '../tools_carousel_widget.dart';
 import '../quote_widget.dart';
-import '../battery_widget.dart';
 import '../countdown_widget.dart';
 import '../photo_frame_widget.dart';
-import '../ambient_widget.dart';
 import '../notification_widget.dart';
 import '../connectivity_widget.dart';
 import '../gif_widget.dart';
@@ -35,14 +33,11 @@ class WidgetCarousel extends StatelessWidget {
         return const ToolsCarouselWidget();
       case 'quote':
         return const QuoteWidget();
-      case 'battery':
-        return const BatteryWidget();
       case 'countdown':
         return const CountdownWidget();
       case 'photo':
         return const PhotoFrameWidget();
-      case 'ambient':
-        return const AmbientWidget();
+    
       case 'notification':
         return const NotificationWidget();
       case 'connectivity':

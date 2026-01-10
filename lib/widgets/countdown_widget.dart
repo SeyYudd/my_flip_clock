@@ -246,7 +246,7 @@ class _CountdownWidgetState extends State<CountdownWidget>
                       color: Colors.white,
                       shadows: [
                         Shadow(
-                          color: Colors.blue.withOpacity(0.5),
+                          color: Colors.blue.withValues(alpha: 0.5),
                           blurRadius: 10,
                         ),
                       ],
@@ -259,7 +259,7 @@ class _CountdownWidgetState extends State<CountdownWidget>
                       DateFormat('dd MMM yyyy, HH:mm').format(_targetDate!),
                       style: TextStyle(
                         fontSize: 14,
-                        color: Colors.white.withOpacity(0.6),
+                        color: Colors.white.withValues(alpha: 0.6),
                       ),
                     ),
                   const SizedBox(height: 24),
@@ -282,7 +282,7 @@ class _CountdownWidgetState extends State<CountdownWidget>
                   icon: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -323,7 +323,7 @@ class _CountdownWidgetState extends State<CountdownWidget>
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.white.withOpacity(0.5),
+                    color: Colors.white.withValues(alpha: 0.5),
                     blurRadius: size * 2,
                   ),
                 ],
@@ -379,9 +379,9 @@ class _CountdownWidgetState extends State<CountdownWidget>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.white.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.2)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
       ),
       child: Column(
         children: [
@@ -399,7 +399,7 @@ class _CountdownWidgetState extends State<CountdownWidget>
             label,
             style: TextStyle(
               fontSize: 10,
-              color: Colors.white.withOpacity(0.6),
+              color: Colors.white.withValues(alpha: 0.6),
               letterSpacing: 1,
             ),
           ),

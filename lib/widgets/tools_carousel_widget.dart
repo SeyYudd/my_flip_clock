@@ -92,7 +92,7 @@ class _CalendarViewState extends State<_CalendarView> {
             dayName,
             style: TextStyle(
               fontSize: 18,
-              color: Colors.white.withOpacity(0.7),
+              color: Colors.white.withValues(alpha: 0.7),
               fontWeight: FontWeight.w300,
             ),
           ),
@@ -111,7 +111,7 @@ class _CalendarViewState extends State<_CalendarView> {
             month,
             style: TextStyle(
               fontSize: 24,
-              color: Colors.white.withOpacity(0.9),
+              color: Colors.white.withValues(alpha: 0.9),
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -120,7 +120,7 @@ class _CalendarViewState extends State<_CalendarView> {
             year,
             style: TextStyle(
               fontSize: 20,
-              color: Colors.white.withOpacity(0.6),
+              color: Colors.white.withValues(alpha: 0.6),
             ),
           ),
           const SizedBox(height: 16),
@@ -145,7 +145,7 @@ class _CalendarViewState extends State<_CalendarView> {
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
+                    color: Colors.white.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: const Text(
@@ -161,7 +161,7 @@ class _CalendarViewState extends State<_CalendarView> {
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
+                  color: Colors.white.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -219,7 +219,7 @@ class _StopwatchView extends StatelessWidget {
                 'STOPWATCH',
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.white.withOpacity(0.5),
+                  color: Colors.white.withValues(alpha: 0.5),
                   letterSpacing: 4,
                   fontWeight: FontWeight.w300,
                 ),
@@ -289,7 +289,7 @@ class _StopwatchView extends StatelessWidget {
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: color.withOpacity(0.4),
+              color: color.withValues(alpha: 0.4),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -361,14 +361,14 @@ class _PomodoroView extends StatelessWidget {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
+                  color: Colors.white.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
                   _getPhaseLabel(state.phase),
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.white.withOpacity(0.9),
+                    color: Colors.white.withValues(alpha: 0.9),
                     letterSpacing: 2,
                     fontWeight: FontWeight.w500,
                   ),
@@ -441,7 +441,7 @@ class _PomodoroView extends StatelessWidget {
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: color.withOpacity(0.3),
+              color: color.withValues(alpha: 0.3),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -499,7 +499,7 @@ class _WeatherView extends StatelessWidget {
               Icon(
                 _getWeatherIcon(state.description),
                 size: 64,
-                color: Colors.white.withOpacity(0.9),
+                color: Colors.white.withValues(alpha: 0.9),
               ),
               const SizedBox(height: 16),
               // Temperature
@@ -517,7 +517,7 @@ class _WeatherView extends StatelessWidget {
                 state.description.isEmpty ? 'Weather' : state.description,
                 style: TextStyle(
                   fontSize: 18,
-                  color: Colors.white.withOpacity(0.7),
+                  color: Colors.white.withValues(alpha: 0.7),
                   fontWeight: FontWeight.w300,
                 ),
               ),
@@ -531,7 +531,7 @@ class _WeatherView extends StatelessWidget {
                     vertical: 10,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.15),
+                    color: Colors.white.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(25),
                   ),
                   child: Row(
@@ -540,13 +540,13 @@ class _WeatherView extends StatelessWidget {
                       Icon(
                         Icons.refresh,
                         size: 16,
-                        color: Colors.white.withOpacity(0.8),
+                        color: Colors.white.withValues(alpha: 0.8),
                       ),
                       const SizedBox(width: 8),
                       Text(
                         'Refresh',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.8),
+                          color: Colors.white.withValues(alpha: 0.8),
                           fontSize: 14,
                         ),
                       ),

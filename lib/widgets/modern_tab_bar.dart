@@ -26,11 +26,11 @@ class ModernTabBar extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [Colors.black, Colors.black.withOpacity(0.95)],
+              colors: [Colors.black, Colors.black.withValues(alpha: 0.95)],
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.blue.withOpacity(0.1),
+                color: Colors.blue.withValues(alpha: 0.1),
                 blurRadius: 10,
                 offset: const Offset(0, 2),
               ),
@@ -54,7 +54,6 @@ class ModernTabBar extends StatelessWidget {
             ),
             onTap: (_) => onInteraction(),
             tabs: const [
-              Tab(icon: Icon(Icons.settings_outlined, size: 22)),
               Tab(text: '2 GRID'),
               Tab(text: 'CLOCK'),
               Tab(text: 'MUSIC'),

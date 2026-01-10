@@ -28,7 +28,7 @@ void main() {
       verify: (bloc) {
         expect(bloc.state.fullscreen, true);
       },
-    );
+    ); 
 
     blocTest<SettingsBloc, SettingsState>(
       'toggles keep screen on when UpdateKeepScreenOn is added',

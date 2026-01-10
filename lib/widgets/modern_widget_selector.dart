@@ -30,28 +30,32 @@ class _ModernWidgetSelectorState extends State<ModernWidgetSelector> {
 
   IconData _getWidgetIcon(String key) {
     switch (key) {
+      case 'calendar':
+        return Icons.calendar_today;
       case 'clock':
         return Icons.access_time;
-      case 'now_playing':
-        return Icons.music_note;
-      case 'tools':
-        return Icons.build;
-      case 'quote':
-        return Icons.format_quote;
-      case 'battery':
-        return Icons.battery_full;
-      case 'countdown':
-        return Icons.timer;
-      case 'photo':
-        return Icons.photo;
-      case 'ambient':
-        return Icons.blur_on;
-      case 'notification':
-        return Icons.notifications;
       case 'connectivity':
         return Icons.wifi;
+      case 'countdown':
+        return Icons.timer;
       case 'gif':
         return Icons.gif_box;
+      case 'now_playing':
+        return Icons.music_note;
+      case 'notification':
+        return Icons.notifications;
+      case 'photo':
+        return Icons.photo;
+      case 'pomodoro':
+        return Icons.local_cafe;
+      case 'quote':
+        return Icons.format_quote;
+      case 'stopwatch':
+        return Icons.timelapse;
+      case 'tools':
+        return Icons.build;
+      case 'weather':
+        return Icons.wb_sunny;
       default:
         return Icons.widgets;
     }
@@ -73,7 +77,7 @@ class _ModernWidgetSelectorState extends State<ModernWidgetSelector> {
             width: 50,
             height: 5,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.3),
+              color: Colors.white.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(10),
             ),
           ),
@@ -190,7 +194,7 @@ class _ModernWidgetSelectorState extends State<ModernWidgetSelector> {
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF6366F1).withOpacity(0.4),
+                          color: const Color(0xFF6366F1).withValues(alpha: 0.4),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),
@@ -307,7 +311,7 @@ class _WidgetCard extends StatelessWidget {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF6366F1).withOpacity(0.5),
+                        color: const Color(0xFF6366F1).withValues(alpha: 0.5),
                         blurRadius: 8,
                       ),
                     ],

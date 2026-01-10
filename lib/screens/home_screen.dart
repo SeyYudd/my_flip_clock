@@ -3,27 +3,30 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:my_stand_clock/screens/page_empty.dart';
+import 'package:my_stand_clock/widgets/button/icon_button_wiget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import '../blocs/settings_bloc.dart';
-import '../blocs/template_bloc.dart';
 import '../core/theme/app_theme.dart';
+import '../screens/about_screen.dart';
+import '../widgets/button/slider_row_widget.dart';
+import '../widgets/button/toggle_row_widget.dart';
+import '../widgets/calendar_widget.dart';
 import '../widgets/clock_widget.dart';
 import '../widgets/media_widget.dart';
-import '../widgets/modern_tab_bar.dart';
+import '../widgets/stopwatch_widget.dart';
 import '../widgets/tools_carousel_widget.dart';
 import '../widgets/quote_widget.dart';
-import '../widgets/settings_widget.dart';
-import '../widgets/battery_widget.dart';
 import '../widgets/countdown_widget.dart';
 import '../widgets/photo_frame_widget.dart';
-import '../widgets/ambient_widget.dart';
 import '../widgets/notification_widget.dart';
 import '../widgets/connectivity_widget.dart';
 import '../widgets/gif_widget.dart';
-import '../widgets/modern_bottom_nav.dart';
 import '../widgets/modern_widget_selector.dart';
+import '../widgets/weather_widget.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -47,10 +50,6 @@ class _HomeScreenState extends State<HomeScreen>
   double _borderRadius = 16.0;
   bool _autoRotate = true;
 
-  // Tab visibility
-  bool _showTabs = true;
-  Timer? _hideTabsTimer;
-
   bool _isLoading = true;
 
   // Burn-in protection
@@ -62,17 +61,19 @@ class _HomeScreenState extends State<HomeScreen>
 
   // All available widgets
   final Map<String, String> widgetOptions = {
+    'calendar': 'Calendar',
     'clock': 'Clock',
-    'now_playing': 'Now Playing',
-    'tools': 'Tools',
-    'quote': 'Quote',
-    'battery': 'Battery Status',
-    'countdown': 'Countdown',
-    'photo': 'Photo Frame',
-    'ambient': 'Ambient Animation',
-    'notification': 'Notifications',
     'connectivity': 'Connectivity',
-    'gif': 'GIF Sticker',
+    'countdown': 'Countdown',
+    'gif': 'GIF',
+    'now_playing': 'Now Playing',
+    'notification': 'Notification',
+    'photo': 'Photo Frame',
+    'pomodoro': 'Pomodoro',
+    'quote': 'Quote',
+    'stopwatch': 'Stopwatch',
+    'tools': 'Tools Carousel',
+    'weather': 'Weather',
   };
 
   @override
@@ -80,19 +81,6 @@ class _HomeScreenState extends State<HomeScreen>
     super.initState();
     _tabController = TabController(length: 5, vsync: this, initialIndex: 1);
     _loadSettings();
-    _startHideTabsTimer();
-  }
-
-  void _startHideTabsTimer() {
-    _hideTabsTimer?.cancel();
-    _hideTabsTimer = Timer(const Duration(seconds: 3), () {
-      if (mounted) setState(() => _showTabs = false);
-    });
-  }
-
-  void _showTabsTemporarily() {
-    setState(() => _showTabs = true);
-    _startHideTabsTimer();
   }
 
   Future<void> _loadSettings() async {
@@ -146,7 +134,6 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void dispose() {
     _tabController.dispose();
-    _hideTabsTimer?.cancel();
     _burnInTimer?.cancel();
     super.dispose();
   }
@@ -242,82 +229,59 @@ class _HomeScreenState extends State<HomeScreen>
             });
           }
 
-          return Scaffold(
-            backgroundColor: Colors.black,
-            body: SafeArea(
-              child: Stack(
-                children: [
-                  // Main content with optional shift
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 500),
-                    transform: Matrix4.translationValues(
-                      settingsState.burnInMode == BurnInMode.shift
-                          ? _burnInOffsetX
-                          : 0,
-                      settingsState.burnInMode == BurnInMode.shift
-                          ? _burnInOffsetY
-                          : 0,
-                      0,
-                    ),
-                    child: GestureDetector(
-                      onVerticalDragStart: (_) => _showTabsTemporarily(),
-                      onHorizontalDragStart: (_) => _showTabsTemporarily(),
-                      child: Column(
-                        children: [
-                          // Modern Tab bar
-                          ModernTabBar(
-                            controller: _tabController,
-                            isVisible: _showTabs,
-                            onInteraction: _startHideTabsTimer,
-                          ),
-                          // Tab content
-                          Expanded(
-                            child: TabBarView(
-                              controller: _tabController,
-                              children: [
-                                const SingleChildScrollView(
-                                  padding: EdgeInsets.all(12.0),
-                                  child: SettingsWidget(),
-                                ),
-                                _buildTwoGridTab(),
-                                const ClockWidget(),
-                                const MediaWidget(),
-                                const QuoteWidget(),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+          return Scaffold(          
+            body: Stack(
+              children: [
+                // Main content with optional shift
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 500),
+                  transform: Matrix4.translationValues(
+                    settingsState.burnInMode == BurnInMode.shift
+                        ? _burnInOffsetX
+                        : 0,
+                    settingsState.burnInMode == BurnInMode.shift
+                        ? _burnInOffsetY
+                        : 0,
+                    0,
                   ),
-                  // Overlay layer for burn-in protection
-                  if (settingsState.burnInMode == BurnInMode.overlay)
-                    Positioned.fill(
-                      child: IgnorePointer(
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 500),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment(
-                                -1 + (_overlayPosition * 2),
-                                -1 + (_overlayPosition * 2),
-                              ),
-                              end: Alignment(
-                                1 - (_overlayPosition * 2),
-                                1 - (_overlayPosition * 2),
-                              ),
-                              colors: [
-                                Colors.transparent,
-                                Colors.black.withOpacity(0.03),
-                                Colors.transparent,
-                              ],
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildTwoGridTab(),
+                      const ClockWidget(),
+                      const MediaWidget(),
+                      const QuoteWidget(),
+                      const AboutScreen(),
+                    ],
+                  ),
+                ),
+                // Overlay layer for burn-in protection
+                if (settingsState.burnInMode == BurnInMode.overlay)
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 500),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment(
+                              -1 + (_overlayPosition * 2),
+                              -1 + (_overlayPosition * 2),
                             ),
+                            end: Alignment(
+                              1 - (_overlayPosition * 2),
+                              1 - (_overlayPosition * 2),
+                            ),
+                            colors: [
+                              Colors.transparent,
+                              Colors.black.withValues(alpha: 0.03),
+                              Colors.transparent,
+                            ],
                           ),
                         ),
                       ),
                     ),
-                ],
-              ),
+                  ),
+              ],
             ),
           );
         },
@@ -329,108 +293,81 @@ class _HomeScreenState extends State<HomeScreen>
     final isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
 
-    return BlocBuilder<TemplateBloc, TemplateState>(
-      builder: (context, templateState) {
-        final template = templateState.currentTemplate;
-        final backgroundColor = template?.style.backgroundColor ?? Colors.black;
-
-        return Stack(
-          children: [
-            // Background with template color
-            Container(color: backgroundColor),
-
-            // Main content with grids
-            Padding(
-              padding: EdgeInsets.all(_outerPadding),
-              child: isLandscape
-                  ? _buildHorizontalGrid()
-                  : _buildVerticalGrid(),
-            ),
-
-            // Modern Bottom Navigation Bar
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: ModernBottomNav(
-                onSettingsTap: _showGridSettings,
-                autoRotate: _autoRotate,
-                onRotateToggle: () {
-                  setState(() {
-                    _autoRotate = !_autoRotate;
-                    _applyRotationSettings();
-                  });
-                  _saveSettings();
-                },
-              ),
-            ),
-          ],
-        );
-      },
+    return Stack(
+      children: [
+        // Main content with grids
+        Padding(
+          padding: EdgeInsets.all(_outerPadding),
+          child: isLandscape ? _buildHorizontalGrid() : _buildVerticalGrid(),
+        ),
+        Positioned(
+          right: 0,
+          top: 0,
+          child: IconButtonWiget(
+            iconData: const Icon(Icons.settings, size: 20),
+            onTap: () => _showGridSettings(),
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildVerticalGrid() {
-    return BlocBuilder<TemplateBloc, TemplateState>(
-      builder: (context, state) {
-        return Column(
-          children: [
-            Expanded(
-              flex: (_topRatio * 100).toInt(),
-              child: Container(
-                margin: EdgeInsets.only(bottom: _innerPadding / 2),
-                decoration: AppTheme.modernCard(borderRadius: _borderRadius),
-                clipBehavior: Clip.antiAlias,
-                child: _buildSlotContent(topWidgets, isTop: true),
-              ),
-            ),
-            Expanded(
-              flex: ((1 - _topRatio) * 100).toInt(),
-              child: Container(
-                margin: EdgeInsets.only(top: _innerPadding / 2),
-                decoration: AppTheme.modernCard(borderRadius: _borderRadius),
-                clipBehavior: Clip.antiAlias,
-                child: _buildSlotContent(bottomWidgets, isTop: false),
-              ),
-            ),
-          ],
-        );
-      },
+    return Column(
+      children: [
+        Expanded(
+          flex: (_topRatio * 100).toInt(),
+          child: Container(
+            margin: EdgeInsets.only(bottom: _innerPadding / 2),
+            decoration: AppTheme.modernCard(borderRadius: _borderRadius),
+            clipBehavior: Clip.antiAlias,
+            child: _buildSlotContent(topWidgets, isTop: true),
+          ),
+        ),
+        Expanded(
+          flex: ((1 - _topRatio) * 100).toInt(),
+          child: Container(
+            margin: EdgeInsets.only(top: _innerPadding / 2),
+            decoration: AppTheme.modernCard(borderRadius: _borderRadius),
+            clipBehavior: Clip.antiAlias,
+            child: _buildSlotContent(bottomWidgets, isTop: false),
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildHorizontalGrid() {
-    return BlocBuilder<TemplateBloc, TemplateState>(
-      builder: (context, state) {
-        return Row(
-          children: [
-            Expanded(
-              flex: (_topRatio * 100).toInt(),
-              child: Container(
-                margin: EdgeInsets.only(right: _innerPadding / 2),
-                decoration: AppTheme.modernCard(borderRadius: _borderRadius),
-                clipBehavior: Clip.antiAlias,
-                child: _buildSlotContent(topWidgets, isTop: true),
-              ),
-            ),
-            Expanded(
-              flex: ((1 - _topRatio) * 100).toInt(),
-              child: Container(
-                margin: EdgeInsets.only(left: _innerPadding / 2),
-                decoration: AppTheme.modernCard(borderRadius: _borderRadius),
-                clipBehavior: Clip.antiAlias,
-                child: _buildSlotContent(bottomWidgets, isTop: false),
-              ),
-            ),
-          ],
-        );
-      },
+    return Row(
+      children: [
+        Expanded(
+          flex: (_topRatio * 100).toInt(),
+          child: Container(
+            margin: EdgeInsets.only(right: _innerPadding / 2),
+            decoration: AppTheme.modernCard(borderRadius: _borderRadius),
+            clipBehavior: Clip.antiAlias,
+            child: _buildSlotContent(topWidgets, isTop: true),
+          ),
+        ),
+        Expanded(
+          flex: ((1 - _topRatio) * 100).toInt(),
+          child: Container(
+            margin: EdgeInsets.only(left: _innerPadding / 2),
+            decoration: AppTheme.modernCard(borderRadius: _borderRadius),
+            clipBehavior: Clip.antiAlias,
+            child: _buildSlotContent(bottomWidgets, isTop: false),
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildSlotContent(List<String> widgets, {required bool isTop}) {
     if (widgets.isEmpty) {
-      return _buildEmptySlot(isTop: isTop);
+      return GestureDetector(
+        onTap: () => _showWidgetSelector(isTop: isTop),
+        child: PageEmpty(),
+      );
     }
 
     if (widgets.length == 1) {
@@ -471,7 +408,7 @@ class _HomeScreenState extends State<HomeScreen>
                 margin: const EdgeInsets.symmetric(horizontal: 2),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withOpacity(0.5),
+                  color: Colors.white.withValues(alpha: 0.5),
                 ),
               );
             }).toList(),
@@ -481,52 +418,10 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildEmptySlot({required bool isTop}) {
-    return GestureDetector(
-      onTap: () => _showWidgetSelector(isTop: isTop),
-      child: Container(
-        width: double.infinity,
-        color: Colors.grey.shade900,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade800,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.add, color: Colors.white70, size: 32),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Pilih Widget',
-              style: TextStyle(color: Colors.white70, fontSize: 14),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              isTop ? 'Slot Atas' : 'Slot Bawah',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildAddButton({required bool isTop}) {
-    return GestureDetector(
+    return IconButtonWiget(
+      iconData: const Icon(Icons.add, color: Colors.white70, size: 18),
       onTap: () => _showWidgetSelector(isTop: isTop),
-      child: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.5),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: const Icon(Icons.edit, color: Colors.white70, size: 18),
-      ),
     );
   }
 
@@ -561,199 +456,304 @@ class _HomeScreenState extends State<HomeScreen>
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.grey[900],
+      backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
       builder: (ctx) => StatefulBuilder(
-        builder: (context, setModalState) => SingleChildScrollView(
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 20,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        builder: (context, setModalState) => Container(
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.92),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border(
+              top: BorderSide(
+                color: Colors.white.withValues(alpha: 0.1),
+                width: 1,
+              ),
+            ),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[600],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Grid Settings',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 20),
-              _buildSliderRow(
-                label: 'Area Atas/Bawah',
-                value: tempTopRatio,
-                min: 0.4,
-                max: 0.6,
-                displayValue:
-                    '${(tempTopRatio * 100).toInt()}% / ${((1 - tempTopRatio) * 100).toInt()}%',
-                onChanged: (v) {
-                  setModalState(() => tempTopRatio = v);
-                  setState(() => _topRatio = v);
-                },
-              ),
-              const SizedBox(height: 16),
-              _buildSliderRow(
-                label: 'Padding Dalam',
-                value: tempInnerPadding,
-                min: 0,
-                max: 40,
-                displayValue: '${tempInnerPadding.toInt()}',
-                onChanged: (v) {
-                  setModalState(() => tempInnerPadding = v);
-                  setState(() => _innerPadding = v);
-                },
-              ),
-              const SizedBox(height: 16),
-              _buildSliderRow(
-                label: 'Padding Luar',
-                value: tempOuterPadding,
-                min: 0,
-                max: 40,
-                displayValue: '${tempOuterPadding.toInt()}',
-                onChanged: (v) {
-                  setModalState(() => tempOuterPadding = v);
-                  setState(() => _outerPadding = v);
-                },
-              ),
-              const SizedBox(height: 16),
-              _buildSliderRow(
-                label: 'Border Radius',
-                value: tempBorderRadius,
-                min: 0,
-                max: 70,
-                displayValue: '${tempBorderRadius.toInt()}',
-                onChanged: (v) {
-                  setModalState(() => tempBorderRadius = v);
-                  setState(() => _borderRadius = v);
-                },
-              ),
-              const SizedBox(height: 24),
-              // Auto-rotate toggle
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Auto Rotate',
-                        style: TextStyle(color: Colors.white, fontSize: 14),
-                      ),
-                      Text(
-                        'Otomatis putar layar',
-                        style: TextStyle(color: Colors.white54, fontSize: 12),
-                      ),
-                    ],
-                  ),
-                  Switch(
-                    value: _autoRotate,
-                    activeThumbColor: Colors.blue,
-                    onChanged: (v) {
-                      setModalState(() {});
-                      setState(() {
-                        _autoRotate = v;
-                        _applyRotationSettings();
-                      });
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+          child: SingleChildScrollView(
+            padding: EdgeInsets.only(
+              left: 24,
+              right: 24,
+              top: 16,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Handle bar
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color: Colors.white30,
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  onPressed: () {
-                    _saveSettings();
-                    Navigator.pop(ctx);
+                ),
+
+                // Title
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.purple.shade400,
+                            Colors.blue.shade400,
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.tune,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Text(
+                      'Grid Settings',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 24),
+
+                // Settings section
+                _buildSettingsSection(
+                  title: 'Layout',
+                  children: [
+                    BuildSliderRow(
+                      label: 'Area Atas/Bawah',
+                      value: tempTopRatio,
+                      min: 0.4,
+                      max: 0.6,
+                      displayValue:
+                          '${(tempTopRatio * 100).toInt()}% / ${((1 - tempTopRatio) * 100).toInt()}%',
+                      onChanged: (v) {
+                        setModalState(() => tempTopRatio = v);
+                        setState(() => _topRatio = v);
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    BuildSliderRow(
+                      label: 'Padding Dalam',
+                      value: tempInnerPadding,
+                      min: 0,
+                      max: 40,
+                      displayValue: '${tempInnerPadding.toInt()}px',
+                      onChanged: (v) {
+                        setModalState(() => tempInnerPadding = v);
+                        setState(() => _innerPadding = v);
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    BuildSliderRow(
+                      label: 'Padding Luar',
+                      value: tempOuterPadding,
+                      min: 0,
+                      max: 40,
+                      displayValue: '${tempOuterPadding.toInt()}px',
+                      onChanged: (v) {
+                        setModalState(() => tempOuterPadding = v);
+                        setState(() => _outerPadding = v);
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    BuildSliderRow(
+                      label: 'Border Radius',
+                      value: tempBorderRadius,
+                      min: 0,
+                      max: 70,
+                      displayValue: '${tempBorderRadius.toInt()}px',
+                      onChanged: (v) {
+                        setModalState(() => tempBorderRadius = v);
+                        setState(() => _borderRadius = v);
+                      },
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 24),
+
+                // Display settings
+                _buildSettingsSection(
+                  title: 'Display',
+                  children: [
+                    ToggleRowWidget(
+                      title: 'Auto Rotate',
+                      subtitle: 'Otomatis putar layar',
+                      value: _autoRotate,
+                      onChanged: (v) {
+                        setModalState(() {});
+                        setState(() {
+                          _autoRotate = v;
+                          _applyRotationSettings();
+                        });
+                      },
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 24),
+
+                BlocBuilder<SettingsBloc, SettingsState>(
+                  builder: (context, state) {
+                    return _buildSettingsSection(
+                      title: 'Advanced',
+                      children: [
+                        ToggleRowWidget(
+                          title: 'Keep screen on',
+                          subtitle: 'Layar selalu nyala',
+                          value: state.keepScreenOn,
+                          onChanged: (v) async {
+                            context.read<SettingsBloc>().add(
+                              UpdateKeepScreenOn(v),
+                            );
+                            if (v) {
+                              await WakelockPlus.enable();
+                            } else {
+                              await WakelockPlus.disable();
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        ToggleRowWidget(
+                          title: 'Fullscreen',
+                          subtitle: 'Sembunyikan status bar',
+                          value: state.fullscreen,
+                          onChanged: (v) async {
+                            context.read<SettingsBloc>().add(
+                              UpdateFullscreen(v),
+                            );
+                            if (v) {
+                              await SystemChrome.setEnabledSystemUIMode(
+                                SystemUiMode.immersiveSticky,
+                              );
+                            } else {
+                              await SystemChrome.setEnabledSystemUIMode(
+                                SystemUiMode.edgeToEdge,
+                              );
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        // Burn-in protection
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Burn-in Protection',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  SizedBox(height: 2),
+                                  Text(
+                                    'Cegah burn-in pada layar OLED',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.white54,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            PopupMenuButton<BurnInMode>(
+                              onSelected: (mode) {
+                                context.read<SettingsBloc>().add(
+                                  UpdateBurnInMode(mode),
+                                );
+                              },
+                              itemBuilder: (_) => const [
+                                PopupMenuItem(
+                                  value: BurnInMode.off,
+                                  child: Text('Off'),
+                                ),
+                                PopupMenuItem(
+                                  value: BurnInMode.shift,
+                                  child: Text('Shift'),
+                                ),
+                                PopupMenuItem(
+                                  value: BurnInMode.overlay,
+                                  child: Text('Overlay'),
+                                ),
+                              ],
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    state.burnInMode == BurnInMode.off
+                                        ? 'Off'
+                                        : state.burnInMode == BurnInMode.shift
+                                        ? 'Shift'
+                                        : 'Overlay',
+                                    style: TextStyle(
+                                      color: state.burnInMode == BurnInMode.off
+                                          ? Colors.grey
+                                          : Colors.blue,
+                                    ),
+                                  ),
+                                  const Icon(
+                                    Icons.arrow_drop_down,
+                                    color: Colors.white60,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    );
                   },
-                  child: const Text(
-                    'Simpan',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                ),
+
+                const SizedBox(height: 32),
+
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () {
+                      _saveSettings();
+                      Navigator.pop(ctx);
+                    },
+                    child: const Text(
+                      'Simpan',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildSliderRow({
-    required String label,
-    required double value,
-    required double min,
-    required double max,
-    required String displayValue,
-    required ValueChanged<double> onChanged,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(color: Colors.white70, fontSize: 14),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.grey[800],
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                displayValue,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        ),
-        SliderTheme(
-          data: SliderThemeData(
-            activeTrackColor: Colors.blue,
-            inactiveTrackColor: Colors.grey[700],
-            thumbColor: Colors.white,
-            overlayColor: Colors.blue.withOpacity(0.2),
-          ),
-          child: Slider(value: value, min: min, max: max, onChanged: onChanged),
-        ),
-      ],
     );
   }
 
@@ -767,16 +767,18 @@ class _HomeScreenState extends State<HomeScreen>
         return const ToolsCarouselWidget();
       case 'quote':
         return const QuoteWidget();
-      case 'battery':
-        return const BatteryWidget();
+      case 'weather':
+        return const WeatherWidget();
       case 'countdown':
         return const CountdownWidget();
       case 'photo':
         return const PhotoFrameWidget();
-      case 'ambient':
-        return const AmbientWidget();
       case 'notification':
         return const NotificationWidget();
+      case 'calendar':
+        return const CalendarWidget();
+      case 'stopwatch':
+        return const StopwatchWidget();
       case 'connectivity':
         return const ConnectivityWidget();
       case 'gif':
@@ -784,5 +786,41 @@ class _HomeScreenState extends State<HomeScreen>
       default:
         return const SizedBox.shrink();
     }
+  }
+
+  Widget _buildSettingsSection({
+    required String title,
+    required List<Widget> children,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.6),
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 1.2,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.1),
+              width: 1,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: children,
+          ),
+        ),
+      ],
+    );
   }
 }
